@@ -18,6 +18,7 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { setCron } from '../../../common/system/cron';
+import { ca } from 'date-fns/locale';
 
 export const loadSystemModels = async (init = false) => {
   const pushModel = (model: SystemModelItemType) => {
@@ -89,6 +90,21 @@ export const loadSystemModels = async (init = false) => {
 
   try {
     // Get model from db and plugin
+ 
+
+    try {
+        await pluginClient.model.list().then((res) => {
+          if (res.status === 200) return res.body;
+          console.error('Get fastGPT plugin model error');
+          return [];
+        })
+      }
+    catch (error) {
+      console.error('Error fetching models from plugin:', error);
+      return [];
+    }
+
+
     const [dbModels, systemModels] = await Promise.all([
       MongoSystemModel.find({}).lean(),
       pluginClient.model.list().then((res) => {

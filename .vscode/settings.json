@@ -28,9 +28,9 @@
     "mdx.server.enable": true,
     "markdown.copyFiles.overwriteBehavior": "nameIncrementally",
     "markdown.copyFiles.destination": {
-        "/document/content/docs/**/*": "${documentWorkspaceFolder}/document/public/imgs/"
+        "/document/content/**/*": "${documentWorkspaceFolder}/document/public/"
     },
-    "files.associations": {
-        "*.mdx": "markdown"
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
     }
 }
