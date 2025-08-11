@@ -20,7 +20,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { deleteEvaluation, getEvaluationList } from '@/web/core/app/api/evaluation';
+import { deleteEvaluation, getEvaluationList } from '@/web/core/evaluation/evaluation';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -28,7 +28,7 @@ import { useState, useEffect, useMemo } from 'react';
 import EvaluationDetailModal from '../../../pageComponents/app/evaluation/DetailModal';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { evaluationType } from '@fastgpt/global/core/app/evaluation/type';
+import type { evaluationType } from '@fastgpt/global/core/evaluation/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
