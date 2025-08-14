@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { EvaluatorSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const { Schema } = connectionMongo;

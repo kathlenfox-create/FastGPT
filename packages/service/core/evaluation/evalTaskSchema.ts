@@ -1,6 +1,9 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { EvalTaskSchemaType } from '@fastgpt/global/core/evaluation/type';
-import { EvaluationStatusEnum, EvaluationStatusValues } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  EvaluationStatusValues
+} from '@fastgpt/global/core/evaluation/constants';
 
 const { Schema } = connectionMongo;
 

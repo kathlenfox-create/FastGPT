@@ -1,194 +1,241 @@
-'use client';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardContainer from '../../../pageComponents/dashboard/Container';
-import { serviceSideProps } from '@/web/common/i18n/utils';
+import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import {
   Box,
   Button,
   Flex,
-  IconButton,
   Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
   Thead,
-  Tr
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Text,
+  Badge,
+  IconButton,
+  useDisclosure,
+  HStack,
+  VStack,
+  Tag,
+  TagLabel
 } from '@chakra-ui/react';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { serviceSideProps } from '@/web/common/i18n/utils';
+import DashboardContainer from '@/pageComponents/dashboard/Container';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { useState } from 'react';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import {
+  getEvaluationDatasetList,
+  deleteEvaluationDataset
+} from '@/web/core/evaluation/evaluation';
 import type { EvaluationDataset } from '@fastgpt/global/core/evaluation/type';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
-import { getEvaluationDatasetList, deleteEvaluationDataset } from '@/web/core/evaluation/evaluation';
-
-const EvaluationDatasets = () => {
-  const router = useRouter();
+const EvaluationDatasetList = () => {
   const { t } = useTranslation();
-
+  const router = useRouter();
+  const { toast } = useToast();
   const [searchKey, setSearchKey] = useState('');
 
+  // 适配器函数来匹配usePagination的参数格式
+  const getDatasetListAdapter = async (params: any) => {
+    return getEvaluationDatasetList({
+      searchKey: params.searchKey || '',
+      pageNum: params.pageNum || 1,
+      pageSize: params.pageSize || 20
+    });
+  };
+
   const {
-    data: datasetList,
+    data: datasetsData,
+    isLoading,
     Pagination,
-    getData: fetchData
-  } = usePagination(getEvaluationDatasetList, {
+    getData
+  } = usePagination(getDatasetListAdapter, {
     pageSize: 20,
     params: {
       searchKey
     },
-    EmptyTip: <EmptyTip />,
     refreshDeps: [searchKey]
   });
 
-  const { runAsync: onDeleteDataset } = useRequest2(deleteEvaluationDataset, {
+  const { runAsync: handleDelete } = useRequest2(deleteEvaluationDataset, {
     onSuccess: () => {
-      fetchData();
+      toast({
+        title: t('common:Delete Success'),
+        status: 'success'
+      });
+      getData();
+    },
+    onError: (error) => {
+      toast({
+        title: t('common:Delete Failed'),
+        description: error.message,
+        status: 'error'
+      });
     }
   });
 
-  const columns = [
-    {
-      title: t('common:Name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: EvaluationDataset) => (
-        <Box
-          cursor="pointer"
-          color="primary.600"
-          _hover={{ textDecoration: 'underline' }}
-          onClick={() => router.push(`/dashboard/evaluation/datasets/${record.id}`)}
-        >
-          {name}
-        </Box>
-      )
-    },
-    {
-      title: t('common:Description'),
-      dataIndex: 'description',
-      key: 'description',
-      render: (description: string) => description || '-'
-    },
-    {
-      title: t('common:Version'),
-      dataIndex: 'version',
-      key: 'version'
-    },
-    {
-      title: t('common:Data Count'),
-      dataIndex: 'data',
-      key: 'data',
-      render: (data: any[]) => data?.length || 0
-    },
-    {
-      title: t('common:Source Type'),
-      dataIndex: 'source_type',
-      key: 'source_type'
-    },
-    {
-      title: t('common:Create Time'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (time: Date) => formatTime2YMDHM(time)
-    },
-    {
-      title: t('common:Action'),
-      key: 'action',
-      render: (record: EvaluationDataset) => (
-        <Flex gap={2}>
-          <MyTooltip label={t('common:Edit')}>
-            <IconButton
-              aria-label="Edit"
-              icon={<MyIcon name="edit" w="14px" />}
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/dashboard/evaluation/datasets/${record.id}/edit`)}
-            />
-          </MyTooltip>
-          <PopoverConfirm
-            onConfirm={() => onDeleteDataset(record.id)}
-            title={t('common:Delete')}
-            description={t('common:Delete Confirm')}
-          >
-            <MyTooltip label={t('common:Delete')}>
-              <IconButton
-                aria-label="Delete"
-                icon={<MyIcon name="delete" w="14px" />}
-                variant="ghost"
-                size="sm"
-                colorScheme="red"
-              />
-            </MyTooltip>
-          </PopoverConfirm>
-        </Flex>
-      )
+  const handleSearch = () => {
+    getData();
+  };
+
+  const handleDeleteDataset = async (id: string) => {
+    if (window.confirm(t('common:Confirm Delete'))) {
+      await handleDelete(id);
     }
-  ];
+  };
+
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString();
+  };
 
   return (
     <DashboardContainer>
-      <MyBox>
-        <Flex justifyContent="space-between" alignItems="center" mb={4}>
-          <Box fontSize="2xl" fontWeight="bold">
-            {t('dashboard_evaluation:Evaluation Datasets')}
-          </Box>
-          <Button
-            leftIcon={<MyIcon name="add" w="14px" />}
-            onClick={() => router.push('/dashboard/evaluation/datasets/create')}
-          >
-            {t('common:Create')}
-          </Button>
-        </Flex>
+      {({ MenuIcon }) => (
+        <MyBox isLoading={isLoading}>
+          <VStack spacing={4} align="stretch" p={6}>
+            {/* Header */}
+            <Flex justifyContent="space-between" alignItems="center">
+              <Box>
+                <Text fontSize="2xl" fontWeight="bold">
+                  {t('dashboard_evaluation:Evaluation_Datasets')}
+                </Text>
+                <Text color="gray.600" fontSize="sm">
+                  {t('dashboard_evaluation:Evaluation_Datasets_Intro')}
+                </Text>
+              </Box>
+              <Button
+                leftIcon={<MyIcon name="common/addLight" w="14px" />}
+                colorScheme="blue"
+                onClick={() => router.push('/dashboard/evaluation/datasets/create')}
+              >
+                {t('dashboard_evaluation:Create_Dataset')}
+              </Button>
+            </Flex>
 
-        <Flex mb={4}>
-          <SearchInput
-            placeholder={t('common:Search')}
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-            onSearch={() => fetchData()}
-          />
-        </Flex>
+            {/* Search */}
+            <HStack>
+              <SearchInput
+                placeholder={t('common:Search')}
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                w="300px"
+              />
+              <Button onClick={handleSearch} size="sm">
+                {t('common:Search')}
+              </Button>
+            </HStack>
 
-        <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                {columns.map((column) => (
-                  <Th key={column.key}>{column.title}</Th>
-                ))}
-              </Tr>
-            </Thead>
-            <Tbody>
-              {datasetList.map((dataset: EvaluationDataset) => (
-                <Tr key={dataset.id}>
-                  {columns.map((column) => (
-                    <Td key={column.key}>
-                      {column.render
-                        ? column.render(dataset[column.dataIndex as keyof EvaluationDataset], dataset)
-                        : dataset[column.dataIndex as keyof EvaluationDataset]}
-                    </Td>
-                  ))}
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
-
-        <Pagination />
-      </MyBox>
+            {/* Table */}
+            {datasetsData && datasetsData.length > 0 ? (
+              <Box>
+                <Table variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>{t('common:Name')}</Th>
+                      <Th>{t('common:Description')}</Th>
+                      <Th>{t('common:Version')}</Th>
+                      <Th>{t('dashboard_evaluation:Data_Count')}</Th>
+                      <Th>{t('dashboard_evaluation:Source_Type')}</Th>
+                      <Th>{t('common:Tags')}</Th>
+                      <Th>{t('common:create_time')}</Th>
+                      <Th>{t('common:Actions')}</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {datasetsData.map((dataset: EvaluationDataset) => (
+                      <Tr key={dataset.id}>
+                        <Td>
+                          <Text fontWeight="medium">{dataset.name}</Text>
+                        </Td>
+                        <Td>
+                          <Text color="gray.600" noOfLines={2}>
+                            {dataset.description || '-'}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <Badge colorScheme="blue">{dataset.version}</Badge>
+                        </Td>
+                        <Td>
+                          <Text>{dataset.data?.length || 0}</Text>
+                        </Td>
+                        <Td>
+                          <Badge
+                            colorScheme={
+                              dataset.source_type === 'manual'
+                                ? 'green'
+                                : dataset.source_type === 'generated'
+                                  ? 'purple'
+                                  : 'gray'
+                            }
+                          >
+                            {dataset.source_type}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <HStack spacing={1} flexWrap="wrap">
+                            {dataset.tags?.slice(0, 3).map((tag: string, index: number) => (
+                              <Tag key={index} size="sm" colorScheme="gray">
+                                <TagLabel>{tag}</TagLabel>
+                              </Tag>
+                            ))}
+                            {dataset.tags && dataset.tags.length > 3 && (
+                              <Text fontSize="xs" color="gray.500">
+                                +{dataset.tags.length - 3}
+                              </Text>
+                            )}
+                          </HStack>
+                        </Td>
+                        <Td>
+                          <Text fontSize="sm" color="gray.600">
+                            {formatDate(dataset.created_at)}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <HStack spacing={2}>
+                            <IconButton
+                              aria-label="Edit"
+                              icon={<MyIcon name="common/edit" w="14px" />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                router.push(`/dashboard/evaluation/datasets/${dataset.id}`)
+                              }
+                            />
+                            <IconButton
+                              aria-label="Delete"
+                              icon={<MyIcon name="common/trash" w="14px" />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="red"
+                              onClick={() => handleDeleteDataset(dataset.id)}
+                            />
+                          </HStack>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+                <Flex mt={4} justifyContent="flex-end">
+                  <Pagination />
+                </Flex>
+              </Box>
+            ) : (
+              <EmptyTip text={t('dashboard_evaluation:Datasets_Notfound')} />
+            )}
+          </VStack>
+        </MyBox>
+      )}
     </DashboardContainer>
   );
 };
 
-export default EvaluationDatasets;
+export default EvaluationDatasetList;
 
 export async function getServerSideProps(content: any) {
   return {

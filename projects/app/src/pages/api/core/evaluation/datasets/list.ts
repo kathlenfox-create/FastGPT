@@ -1,14 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@fastgpt/service/common/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoEvaluationDataset } from '@fastgpt/service/core/evaluation/evaluationDatasetSchema';
 import type { ListEvaluationDatasetsBody } from '@fastgpt/global/core/evaluation/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { teamId } = await authCert({ req, authToken: true });
-    await connectToDatabase();
 
     const { searchKey = '', pageNum = 1, pageSize = 20 } = req.body as ListEvaluationDatasetsBody;
 
@@ -28,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes(res, {
       data: {
-        list: datasets.map(dataset => ({
+        list: datasets.map((dataset) => ({
           id: dataset._id,
           name: dataset.name,
           description: dataset.description,

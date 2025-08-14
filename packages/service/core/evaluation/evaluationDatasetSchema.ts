@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { EvaluationDatasetSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const { Schema } = connectionMongo;
@@ -29,26 +29,28 @@ const EvaluationDatasetSchema = new Schema({
     type: String,
     required: true
   },
-  data: [{
-    id: {
-      type: String,
-      required: true
-    },
-    user_input: {
-      type: String,
-      required: true
-    },
-    actual_output: String,
-    expected_output: {
-      type: String,
-      required: true
-    },
-    context: String,
-    retrieval_context: String,
-    metadata: Object,
-    scenario: String,
-    persona: String
-  }],
+  data: [
+    {
+      id: {
+        type: String,
+        required: true
+      },
+      user_input: {
+        type: String,
+        required: true
+      },
+      actual_output: String,
+      expected_output: {
+        type: String,
+        required: true
+      },
+      context: String,
+      retrieval_context: String,
+      metadata: Object,
+      scenario: String,
+      persona: String
+    }
+  ],
   tags: [String],
   source_type: {
     type: String,

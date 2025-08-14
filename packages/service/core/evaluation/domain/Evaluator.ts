@@ -1,4 +1,8 @@
-import { Evaluator as IEvaluator, EvaluatorConfig, EvaluationResult } from '@fastgpt/global/core/evaluation/type';
+import type {
+  Evaluator as IEvaluator,
+  EvaluatorConfig,
+  EvaluationResult
+} from '@fastgpt/global/core/evaluation/type';
 import { generateId, calculateSimpleCosineSimilarity } from '@fastgpt/global/core/evaluation/utils';
 
 export class Evaluator implements IEvaluator {
@@ -20,7 +24,7 @@ export class Evaluator implements IEvaluator {
     this.updated_at = new Date();
     this.teamId = props.teamId;
     this.tmbId = props.tmbId;
-    
+
     this.validate();
   }
 
@@ -28,7 +32,7 @@ export class Evaluator implements IEvaluator {
     if (!this.name?.trim()) {
       throw new Error('Evaluator name is required');
     }
-    
+
     this.validateConfig();
   }
 
@@ -36,7 +40,7 @@ export class Evaluator implements IEvaluator {
     if (!this.config?.type) {
       throw new Error('Evaluator config type is required');
     }
-    
+
     switch (this.config.type) {
       case 'accuracy':
       case 'semantic_similarity':
@@ -67,10 +71,10 @@ export class Evaluator implements IEvaluator {
     }
   ): Promise<Pick<EvaluationResult, 'score' | 'details' | 'execution_time_ms'>> {
     const startTime = Date.now();
-    
+
     try {
       let result: { score: number; details?: Record<string, any> };
-      
+
       switch (this.config.type) {
         case 'accuracy':
           result = this.evaluateAccuracy(actual_output, expected_output);
@@ -87,26 +91,31 @@ export class Evaluator implements IEvaluator {
         default:
           throw new Error(`Unsupported evaluator type: ${this.config.type}`);
       }
-      
+
       return {
         score: result.score,
         details: result.details,
         execution_time_ms: Date.now() - startTime
       };
     } catch (error) {
-      throw new Error(`Evaluation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Evaluation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private evaluateAccuracy(actual: string, expected: string): { score: number; details: Record<string, any> } {
+  private evaluateAccuracy(
+    actual: string,
+    expected: string
+  ): { score: number; details: Record<string, any> } {
     const normalizeText = (text: string) => text.trim().toLowerCase();
-    
+
     const normalizedActual = normalizeText(actual);
     const normalizedExpected = normalizeText(expected);
-    
+
     const exactMatch = normalizedActual === normalizedExpected;
     const score = exactMatch ? 1.0 : 0.0;
-    
+
     return {
       score,
       details: {
@@ -119,22 +128,22 @@ export class Evaluator implements IEvaluator {
   }
 
   private async evaluateSemanticSimilarity(
-    actual: string, 
+    actual: string,
     expected: string
   ): Promise<{ score: number; details: Record<string, any> }> {
     const threshold = this.config.params?.threshold || 0.8;
     const model = this.config.params?.model || 'simple';
-    
+
     let similarity: number;
-    
+
     if (model === 'simple') {
       similarity = calculateSimpleCosineSimilarity(actual, expected);
     } else {
       throw new Error(`Unsupported similarity model: ${model}`);
     }
-    
+
     const score = similarity >= threshold ? 1.0 : similarity;
-    
+
     return {
       score,
       details: {
@@ -155,21 +164,21 @@ export class Evaluator implements IEvaluator {
     if (!customFunction) {
       throw new Error('Custom evaluator requires a function parameter');
     }
-    
+
     if (typeof customFunction === 'function') {
       const result = await customFunction(actual, expected, context, this.config.params);
-      
+
       if (typeof result === 'number') {
         return { score: result, details: {} };
       }
-      
+
       if (typeof result === 'object' && typeof result.score === 'number') {
         return result;
       }
-      
+
       throw new Error('Custom function must return a number or object with score property');
     }
-    
+
     throw new Error('Custom evaluator function must be a callable function');
   }
 
@@ -182,16 +191,16 @@ export class Evaluator implements IEvaluator {
     const modelName = this.config.params?.model_name || 'gpt-3.5-turbo';
     const temperature = this.config.params?.temperature || 0.1;
     const maxTokens = this.config.params?.max_tokens || 100;
-    
+
     if (!prompt) {
       throw new Error('LLM evaluator requires a prompt parameter');
     }
-    
+
     try {
       // 这里需要调用FastGPT的LLM API
       // 暂时返回模拟评分
       const mockScore = Math.random() * 0.3 + 0.7; // 0.7-1.0之间的随机分数
-      
+
       return {
         score: mockScore,
         details: {
@@ -202,7 +211,9 @@ export class Evaluator implements IEvaluator {
         }
       };
     } catch (error) {
-      throw new Error(`LLM evaluation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `LLM evaluation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { EvalTargetSchemaType } from '@fastgpt/global/core/evaluation/type';
 
 const { Schema } = connectionMongo;
@@ -33,11 +33,13 @@ const EvalTargetSchema = new Schema({
     },
     config: {
       // Mock配置
-      responses: [{
-        input_pattern: String,
-        output: String,
-        delay: Number
-      }],
+      responses: [
+        {
+          input_pattern: String,
+          output: String,
+          delay: Number
+        }
+      ],
       // HTTP配置
       url: String,
       method: {

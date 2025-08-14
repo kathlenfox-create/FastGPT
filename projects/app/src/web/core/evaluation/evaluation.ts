@@ -1,5 +1,5 @@
 import { POST, GET, DELETE, PUT } from '@/web/common/api/request';
-import type { PaginationResponse } from '@/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type {
   EvaluationDataset,
   EvalTarget,
@@ -25,8 +25,10 @@ export const getEvaluationDatasetList = (data: ListEvaluationDatasetsBody) =>
 export const getEvaluationDatasetDetail = (id: string) =>
   GET<EvaluationDataset>(`/core/evaluation/datasets/detail?id=${id}`);
 
-export const putUpdateEvaluationDataset = (id: string, data: Partial<CreateEvaluationDatasetBody>) =>
-  PUT<EvaluationDataset>(`/core/evaluation/datasets/update?id=${id}`, data);
+export const putUpdateEvaluationDataset = (
+  id: string,
+  data: Partial<CreateEvaluationDatasetBody>
+) => PUT<EvaluationDataset>(`/core/evaluation/datasets/update?id=${id}`, data);
 
 export const deleteEvaluationDataset = (id: string) =>
   DELETE(`/core/evaluation/datasets/delete?id=${id}`);
@@ -44,8 +46,7 @@ export const getEvalTargetDetail = (id: string) =>
 export const putUpdateEvalTarget = (id: string, data: Partial<CreateEvalTargetBody>) =>
   PUT<EvalTarget>(`/core/evaluation/targets/update?id=${id}`, data);
 
-export const deleteEvalTarget = (id: string) =>
-  DELETE(`/core/evaluation/targets/delete?id=${id}`);
+export const deleteEvalTarget = (id: string) => DELETE(`/core/evaluation/targets/delete?id=${id}`);
 
 export const postTestEvalTarget = (id: string, testData: any) =>
   POST(`/core/evaluation/targets/test?id=${id}`, testData);

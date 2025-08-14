@@ -1,7 +1,7 @@
-import { EvaluationData, EvaluationResult } from '@fastgpt/global/core/evaluation/type';
+import type { EvaluationData, EvaluationResult } from '@fastgpt/global/core/evaluation/type';
 import { generateId } from '@fastgpt/global/core/evaluation/utils';
-import { EvalTarget } from './EvalTarget';
-import { Evaluator } from './Evaluator';
+import type { EvalTarget } from './EvalTarget';
+import type { Evaluator } from './Evaluator';
 
 export interface EvalChainResult {
   evaluation_data_id: string;
@@ -18,7 +18,11 @@ export interface EvalChainContext {
   hooks?: {
     before_target?: (data: EvaluationData) => Promise<void> | void;
     after_target?: (data: EvaluationData, output: string) => Promise<void> | void;
-    before_evaluation?: (evaluator: Evaluator, actual: string, expected: string) => Promise<void> | void;
+    before_evaluation?: (
+      evaluator: Evaluator,
+      actual: string,
+      expected: string
+    ) => Promise<void> | void;
     after_evaluation?: (evaluator: Evaluator, result: EvaluationResult) => Promise<void> | void;
     on_error?: (error: Error, step: string) => Promise<void> | void;
   };
@@ -52,17 +56,17 @@ export class EvalChain {
 
     try {
       await this.executeHook(context?.hooks?.before_target, evaluationData);
-      
+
       result.target_output = await this.executeTarget(evaluationData, context);
-      
+
       await this.executeHook(context?.hooks?.after_target, evaluationData, result.target_output);
-      
+
       result.evaluation_results = await this.executeEvaluations(
         evaluationData,
         result.target_output,
         context
       );
-      
+
       result.success = true;
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
@@ -79,7 +83,7 @@ export class EvalChain {
     context?: EvalChainContext
   ): Promise<string> {
     const timeout = context?.timeout_ms || 30000;
-    
+
     const targetPromise = this.target.invoke(evaluationData.user_input, {
       context: evaluationData.context,
       retrieval_context: evaluationData.retrieval_context,
@@ -94,7 +98,7 @@ export class EvalChain {
       return await Promise.race([targetPromise, timeoutPromise]);
     } catch (error) {
       if (context?.retry_on_failure) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         return await this.target.invoke(evaluationData.user_input, {
           context: evaluationData.context,
           retrieval_context: evaluationData.retrieval_context,
@@ -111,7 +115,7 @@ export class EvalChain {
     context?: EvalChainContext
   ): Promise<EvaluationResult[]> {
     const results: EvaluationResult[] = [];
-    
+
     for (const evaluator of this.evaluators) {
       try {
         await this.executeHook(
@@ -120,17 +124,13 @@ export class EvalChain {
           actualOutput,
           evaluationData.expected_output
         );
-        
-        const evalResult = await evaluator.evaluate(
-          actualOutput,
-          evaluationData.expected_output,
-          {
-            user_input: evaluationData.user_input,
-            retrieval_context: evaluationData.retrieval_context,
-            metadata: evaluationData.metadata
-          }
-        );
-        
+
+        const evalResult = await evaluator.evaluate(actualOutput, evaluationData.expected_output, {
+          user_input: evaluationData.user_input,
+          retrieval_context: evaluationData.retrieval_context,
+          metadata: evaluationData.metadata
+        });
+
         const fullResult: EvaluationResult = {
           id: generateId(),
           evaluation_data_id: evaluationData.id,
@@ -140,9 +140,9 @@ export class EvalChain {
           execution_time_ms: evalResult.execution_time_ms,
           created_at: new Date()
         };
-        
+
         results.push(fullResult);
-        
+
         await this.executeHook(context?.hooks?.after_evaluation, evaluator, fullResult);
       } catch (error) {
         const errorResult: EvaluationResult = {
@@ -154,12 +154,12 @@ export class EvalChain {
           execution_time_ms: 0,
           created_at: new Date()
         };
-        
+
         results.push(errorResult);
         await this.executeHook(context?.hooks?.on_error, error, `evaluation-${evaluator.id}`);
       }
     }
-    
+
     return results;
   }
 
@@ -168,7 +168,10 @@ export class EvalChain {
       try {
         await hook(...args);
       } catch (error) {
-        console.warn('Hook execution failed:', error instanceof Error ? error.message : String(error));
+        console.warn(
+          'Hook execution failed:',
+          error instanceof Error ? error.message : String(error)
+        );
       }
     }
   }
@@ -183,15 +186,15 @@ export class EvalChain {
   ): Promise<EvalChainResult[]> {
     const results: EvalChainResult[] = [];
     const total = evaluationDataList.length;
-    
+
     if (context?.parallel) {
       const batchSize = context.batch_size || 5;
-      
+
       for (let i = 0; i < evaluationDataList.length; i += batchSize) {
         const batch = evaluationDataList.slice(i, i + batchSize);
-        const batchPromises = batch.map(data => this.execute(data, context));
+        const batchPromises = batch.map((data) => this.execute(data, context));
         const batchResults = await Promise.allSettled(batchPromises);
-        
+
         for (const result of batchResults) {
           if (result.status === 'fulfilled') {
             results.push(result.value);
@@ -206,7 +209,7 @@ export class EvalChain {
             });
           }
         }
-        
+
         if (context.progress_callback) {
           context.progress_callback(results.length, total);
         }
@@ -215,13 +218,13 @@ export class EvalChain {
       for (let i = 0; i < evaluationDataList.length; i++) {
         const result = await this.execute(evaluationDataList[i], context);
         results.push(result);
-        
+
         if (context?.progress_callback) {
           context.progress_callback(i + 1, total);
         }
       }
     }
-    
+
     return results;
   }
 
@@ -237,12 +240,13 @@ export class EvalChain {
       count: number;
     }>;
   } {
-    const successful = results.filter(r => r.success).length;
+    const successful = results.filter((r) => r.success).length;
     const failed = results.length - successful;
-    const avgExecutionTime = results.reduce((sum, r) => sum + r.execution_time_ms, 0) / results.length;
-    
+    const avgExecutionTime =
+      results.reduce((sum, r) => sum + r.execution_time_ms, 0) / results.length;
+
     const evaluatorMap = new Map<string, { scores: number[]; count: number }>();
-    
+
     for (const result of results) {
       if (result.success) {
         for (const evalResult of result.evaluation_results) {
@@ -255,13 +259,13 @@ export class EvalChain {
         }
       }
     }
-    
+
     const evaluatorStats = Array.from(evaluatorMap.entries()).map(([id, stats]) => ({
       evaluator_id: id,
       avg_score: stats.scores.reduce((sum, score) => sum + score, 0) / stats.scores.length,
       count: stats.count
     }));
-    
+
     return {
       total: results.length,
       successful,

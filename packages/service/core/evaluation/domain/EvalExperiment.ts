@@ -1,8 +1,12 @@
-import { EvalExperiment as IEvalExperiment, EvaluationResult, EvalTask as IEvalTask } from '@fastgpt/global/core/evaluation/type';
+import type {
+  EvalExperiment as IEvalExperiment,
+  EvaluationResult,
+  EvalTask as IEvalTask
+} from '@fastgpt/global/core/evaluation/type';
 import { generateId, TASK_RETRY_CONFIG } from '@fastgpt/global/core/evaluation/utils';
-import { EvaluationDataset } from './EvaluationDataset';
-import { EvalTarget } from './EvalTarget';
-import { Evaluator } from './Evaluator';
+import type { EvaluationDataset } from './EvaluationDataset';
+import type { EvalTarget } from './EvalTarget';
+import type { Evaluator } from './Evaluator';
 import { EvalChain, EvalChainResult } from './EvalChain';
 
 export class EvalTask implements IEvalTask {
@@ -92,7 +96,7 @@ export class EvalExperiment implements IEvalExperiment {
   public completed_at?: Date;
   public teamId: string;
   public tmbId: string;
-  
+
   private tasks: EvalTask[] = [];
 
   constructor(props: Omit<IEvalExperiment, 'id' | 'created_at' | 'updated_at'> & { id?: string }) {
@@ -122,7 +126,7 @@ export class EvalExperiment implements IEvalExperiment {
 
     this.tasks = [];
     const totalTasks = dataset.data.length * this.evaluator_ids.length;
-    
+
     for (const dataItem of dataset.data) {
       for (const evaluatorId of this.evaluator_ids) {
         const task = new EvalTask({
@@ -150,7 +154,7 @@ export class EvalExperiment implements IEvalExperiment {
     if (this.status !== 'pending') {
       throw new Error(`Cannot start experiment in ${this.status} status`);
     }
-    
+
     this.status = 'running';
     this.started_at = new Date();
     this.updated_at = new Date();
@@ -160,7 +164,7 @@ export class EvalExperiment implements IEvalExperiment {
     if (this.status !== 'pending' && this.status !== 'running') {
       throw new Error(`Cannot cancel experiment in ${this.status} status`);
     }
-    
+
     this.status = 'cancelled';
     this.completed_at = new Date();
     this.updated_at = new Date();
@@ -179,19 +183,19 @@ export class EvalExperiment implements IEvalExperiment {
     if (this.tasks.length === 0) {
       this.initializeTasks(dataset);
     }
-    
+
     this.start();
 
-    const evaluatorMap = new Map(evaluators.map(e => [e.id, e]));
-    const dataMap = new Map(dataset.data.map(d => [d.id, d]));
-    
+    const evaluatorMap = new Map(evaluators.map((e) => [e.id, e]));
+    const dataMap = new Map(dataset.data.map((d) => [d.id, d]));
+
     try {
       if (options?.parallel) {
         await this.executeParallel(dataMap, target, evaluatorMap, options);
       } else {
         await this.executeSequential(dataMap, target, evaluatorMap, options);
       }
-      
+
       this.status = this.progress.failed > 0 ? 'failed' : 'completed';
     } catch (error) {
       this.status = 'failed';
@@ -209,14 +213,16 @@ export class EvalExperiment implements IEvalExperiment {
     options?: any
   ): Promise<void> {
     const batchSize = options?.batch_size || 5;
-    const pendingTasks = this.tasks.filter(task => task.status === 'pending');
-    
+    const pendingTasks = this.tasks.filter((task) => task.status === 'pending');
+
     for (let i = 0; i < pendingTasks.length; i += batchSize) {
       const batch = pendingTasks.slice(i, i + batchSize);
-      const batchPromises = batch.map(task => this.executeTask(task, dataMap, target, evaluatorMap));
-      
+      const batchPromises = batch.map((task) =>
+        this.executeTask(task, dataMap, target, evaluatorMap)
+      );
+
       await Promise.allSettled(batchPromises);
-      
+
       if (options?.progress_callback) {
         options.progress_callback(this);
       }
@@ -229,11 +235,11 @@ export class EvalExperiment implements IEvalExperiment {
     evaluatorMap: Map<string, Evaluator>,
     options?: any
   ): Promise<void> {
-    const pendingTasks = this.tasks.filter(task => task.status === 'pending');
-    
+    const pendingTasks = this.tasks.filter((task) => task.status === 'pending');
+
     for (const task of pendingTasks) {
       await this.executeTask(task, dataMap, target, evaluatorMap);
-      
+
       if (options?.progress_callback) {
         options.progress_callback(this);
       }
@@ -248,7 +254,7 @@ export class EvalExperiment implements IEvalExperiment {
   ): Promise<void> {
     const evaluationData = dataMap.get(task.evaluation_data_id);
     const evaluator = evaluatorMap.get(task.evaluator_id);
-    
+
     if (!evaluationData || !evaluator) {
       task.fail('Missing evaluation data or evaluator');
       this.progress.failed++;
@@ -257,17 +263,17 @@ export class EvalExperiment implements IEvalExperiment {
     }
 
     let attempts = 0;
-    
+
     while (attempts <= task.max_retries) {
       try {
         task.start();
-        
+
         const chain = new EvalChain(target, [evaluator]);
         const chainResult = await chain.execute(evaluationData, {
           timeout_ms: this.config?.timeout_ms || 30000,
           retry_on_failure: false
         });
-        
+
         if (chainResult.success && chainResult.evaluation_results.length > 0) {
           const result = chainResult.evaluation_results[0];
           task.complete(result);
@@ -279,20 +285,24 @@ export class EvalExperiment implements IEvalExperiment {
         }
       } catch (error) {
         attempts++;
-        
+
         if (attempts > task.max_retries) {
           task.fail(error instanceof Error ? error.message : String(error));
           this.progress.failed++;
           break;
         } else {
           task.retry();
-          await new Promise(resolve => 
-            setTimeout(resolve, TASK_RETRY_CONFIG.INITIAL_DELAY_MS * Math.pow(TASK_RETRY_CONFIG.BACKOFF_MULTIPLIER, attempts - 1))
+          await new Promise((resolve) =>
+            setTimeout(
+              resolve,
+              TASK_RETRY_CONFIG.INITIAL_DELAY_MS *
+                Math.pow(TASK_RETRY_CONFIG.BACKOFF_MULTIPLIER, attempts - 1)
+            )
           );
         }
       }
     }
-    
+
     this.updated_at = new Date();
   }
 
@@ -301,7 +311,7 @@ export class EvalExperiment implements IEvalExperiment {
   }
 
   public getTaskById(taskId: string): EvalTask | undefined {
-    return this.tasks.find(task => task.id === taskId);
+    return this.tasks.find((task) => task.id === taskId);
   }
 
   public getStatistics(): {
@@ -312,17 +322,18 @@ export class EvalExperiment implements IEvalExperiment {
     avg_score: number;
   } {
     const totalTasks = this.tasks.length;
-    const completedTasks = this.tasks.filter(t => t.status === 'completed').length;
-    const failedTasks = this.tasks.filter(t => t.status === 'failed').length;
+    const completedTasks = this.tasks.filter((t) => t.status === 'completed').length;
+    const failedTasks = this.tasks.filter((t) => t.status === 'failed').length;
     const successRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
-    
+
     const validScores = this.results
       .filter((r: any) => r.score !== undefined && r.score !== null)
       .map((r: any) => r.score);
-    const avgScore = validScores.length > 0 
-      ? validScores.reduce((sum: number, score: number) => sum + score, 0) / validScores.length 
-      : 0;
-    
+    const avgScore =
+      validScores.length > 0
+        ? validScores.reduce((sum: number, score: number) => sum + score, 0) / validScores.length
+        : 0;
+
     return {
       total_tasks: totalTasks,
       completed_tasks: completedTasks,

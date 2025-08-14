@@ -1,15 +1,15 @@
-import { EvaluationData, EvaluationDataset } from './type';
+import type { EvaluationData, EvaluationDataset } from './type';
 
 // 验证评估数据
 export function validateEvaluationData(data: EvaluationData): void {
   if (!data.id?.trim()) {
     throw new Error('Evaluation data ID is required');
   }
-  
+
   if (!data.user_input?.trim()) {
     throw new Error('User input is required');
   }
-  
+
   if (!data.expected_output?.trim()) {
     throw new Error('Expected output is required');
   }
@@ -20,20 +20,22 @@ export function validateEvaluationDataset(dataset: Partial<EvaluationDataset>): 
   if (!dataset.name?.trim()) {
     throw new Error('Dataset name is required');
   }
-  
+
   if (!dataset.version?.trim()) {
     throw new Error('Dataset version is required');
   }
-  
+
   if (!Array.isArray(dataset.data)) {
     throw new Error('Dataset data must be an array');
   }
-  
+
   dataset.data?.forEach((item, index) => {
     try {
       validateEvaluationData(item);
     } catch (error) {
-      throw new Error(`Invalid data at index ${index}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Invalid data at index ${index}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   });
 }
@@ -53,27 +55,27 @@ export function calculateSimpleCosineSimilarity(text1: string, text2: string): n
     }
     return freq;
   };
-  
+
   const freq1 = getWordFreq(text1);
   const freq2 = getWordFreq(text2);
-  
+
   const allWords = new Set([...freq1.keys(), ...freq2.keys()]);
-  
+
   let dotProduct = 0;
   let norm1 = 0;
   let norm2 = 0;
-  
+
   for (const word of allWords) {
     const f1 = freq1.get(word) || 0;
     const f2 = freq2.get(word) || 0;
-    
+
     dotProduct += f1 * f2;
     norm1 += f1 * f1;
     norm2 += f2 * f2;
   }
-  
+
   if (norm1 === 0 || norm2 === 0) return 0;
-  
+
   return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
 }
 
@@ -86,7 +88,7 @@ export function formatScore(score: number): string {
 export function getEvaluationStatusText(status: number): string {
   const statusMap = {
     0: 'pending',
-    1: 'running', 
+    1: 'running',
     2: 'completed',
     3: 'failed',
     4: 'cancelled'
@@ -103,17 +105,18 @@ export function calculateEvaluationStats(results: any[]): {
   avg_score: number;
 } {
   const total = results.length;
-  const completed = results.filter(r => r.status === 2).length;
-  const failed = results.filter(r => r.status === 3).length;
+  const completed = results.filter((r) => r.status === 2).length;
+  const failed = results.filter((r) => r.status === 3).length;
   const success_rate = total > 0 ? completed / total : 0;
-  
+
   const validScores = results
-    .filter(r => r.status === 2 && typeof r.score === 'number')
-    .map(r => r.score);
-  const avg_score = validScores.length > 0 
-    ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length 
-    : 0;
-  
+    .filter((r) => r.status === 2 && typeof r.score === 'number')
+    .map((r) => r.score);
+  const avg_score =
+    validScores.length > 0
+      ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length
+      : 0;
+
   return {
     total,
     completed,
@@ -122,3 +125,9 @@ export function calculateEvaluationStats(results: any[]): {
     avg_score
   };
 }
+
+export const TASK_RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  INITIAL_DELAY_MS: 1000,
+  BACKOFF_MULTIPLIER: 2
+} as const;

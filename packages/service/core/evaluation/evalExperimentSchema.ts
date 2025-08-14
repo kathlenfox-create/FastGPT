@@ -2,9 +2,12 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { EvalExperimentSchemaType } from '@fastgpt/global/core/evaluation/type';
-import { EvaluationStatusEnum, EvaluationStatusValues } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  EvaluationStatusValues
+} from '@fastgpt/global/core/evaluation/constants';
 
 const { Schema } = connectionMongo;
 
@@ -34,10 +37,12 @@ const EvalExperimentSchema = new Schema({
     type: String,
     required: true
   },
-  evaluator_ids: [{
-    type: String,
-    required: true
-  }],
+  evaluator_ids: [
+    {
+      type: String,
+      required: true
+    }
+  ],
   status: {
     type: Number,
     default: EvaluationStatusEnum.pending,

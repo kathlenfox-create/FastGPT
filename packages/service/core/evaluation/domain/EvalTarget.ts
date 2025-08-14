@@ -1,4 +1,11 @@
-import { EvalTarget as IEvalTarget, EvalTargetConfig, MockConfig, HttpConfig, FunctionConfig, AppConfig } from '@fastgpt/global/core/evaluation/type';
+import type {
+  EvalTarget as IEvalTarget,
+  EvalTargetConfig,
+  MockConfig,
+  HttpConfig,
+  FunctionConfig,
+  AppConfig
+} from '@fastgpt/global/core/evaluation/type';
 import { generateId } from '@fastgpt/global/core/evaluation/utils';
 
 export class EvalTarget implements IEvalTarget {
@@ -20,7 +27,7 @@ export class EvalTarget implements IEvalTarget {
     this.updated_at = new Date();
     this.teamId = props.teamId;
     this.tmbId = props.tmbId;
-    
+
     this.validate();
   }
 
@@ -28,7 +35,7 @@ export class EvalTarget implements IEvalTarget {
     if (!this.name?.trim()) {
       throw new Error('Target name is required');
     }
-    
+
     this.validateConfig();
   }
 
@@ -36,11 +43,11 @@ export class EvalTarget implements IEvalTarget {
     if (!this.config?.type) {
       throw new Error('Target config type is required');
     }
-    
+
     if (!this.config?.config) {
       throw new Error('Target config is required');
     }
-    
+
     switch (this.config.type) {
       case 'mock':
         this.validateMockConfig(this.config.config as MockConfig);
@@ -69,7 +76,7 @@ export class EvalTarget implements IEvalTarget {
     if (!config.url?.trim()) {
       throw new Error('HTTP config URL is required');
     }
-    
+
     if (!config.method) {
       throw new Error('HTTP config method is required');
     }
@@ -79,7 +86,7 @@ export class EvalTarget implements IEvalTarget {
     if (!config.module_path?.trim()) {
       throw new Error('Function config module_path is required');
     }
-    
+
     if (!config.function_name?.trim()) {
       throw new Error('Function config function_name is required');
     }
@@ -108,22 +115,22 @@ export class EvalTarget implements IEvalTarget {
 
   private invokeMock(input: string): Promise<string> {
     const mockConfig = this.config.config as MockConfig;
-    
+
     for (const response of mockConfig.responses) {
       if (!response.input_pattern || new RegExp(response.input_pattern).test(input)) {
         const delay = response.delay || 0;
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           setTimeout(() => resolve(response.output), delay);
         });
       }
     }
-    
+
     return Promise.resolve('Default mock response');
   }
 
   private async invokeHttp(input: string, context?: Record<string, any>): Promise<string> {
     const httpConfig = this.config.config as HttpConfig;
-    
+
     const requestOptions: RequestInit = {
       method: httpConfig.method,
       headers: {
@@ -164,7 +171,7 @@ export class EvalTarget implements IEvalTarget {
 
   private async invokeFunction(input: string, context?: Record<string, any>): Promise<string> {
     const funcConfig = this.config.config as FunctionConfig;
-    
+
     try {
       // For demo purposes, we'll simulate function execution
       // In production, implement proper sandboxing and security measures
@@ -172,28 +179,34 @@ export class EvalTarget implements IEvalTarget {
         // Simulate a demo function response
         return `Demo function response for input: ${input}`;
       }
-      
+
       // In a real implementation, you would:
       // 1. Validate the module_path against an allowlist
       // 2. Use a secure sandbox environment
       // 3. Implement proper error handling and timeouts
-      
+
       // For now, return a placeholder response to avoid dynamic import warnings
-      throw new Error(`Function targets require custom implementation. Module: ${funcConfig.module_path}, Function: ${funcConfig.function_name}`);
+      throw new Error(
+        `Function targets require custom implementation. Module: ${funcConfig.module_path}, Function: ${funcConfig.function_name}`
+      );
     } catch (error) {
-      throw new Error(`Function execution failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Function execution failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   private async invokeApp(input: string, context?: Record<string, any>): Promise<string> {
     const appConfig = this.config.config as AppConfig;
-    
+
     try {
       // 这里需要调用FastGPT的应用API
       // 暂时返回模拟响应
       return `App response for input: ${input} (App ID: ${appConfig.appId})`;
     } catch (error) {
-      throw new Error(`App execution failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `App execution failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -203,9 +216,13 @@ export class EvalTarget implements IEvalTarget {
     this.updated_at = new Date();
   }
 
-  public async testConnection(): Promise<{ success: boolean; error?: string; latency_ms?: number }> {
+  public async testConnection(): Promise<{
+    success: boolean;
+    error?: string;
+    latency_ms?: number;
+  }> {
     const startTime = Date.now();
-    
+
     try {
       await this.invoke('test input', { test: true });
       return {

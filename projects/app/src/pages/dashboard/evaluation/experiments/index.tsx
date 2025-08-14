@@ -1,6 +1,6 @@
 'use client';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardContainer from '../../../pageComponents/dashboard/Container';
+import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import {
@@ -30,11 +30,11 @@ import type { EvalExperiment } from '@fastgpt/global/core/evaluation/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
-import { 
-  getEvalExperimentList, 
-  deleteEvalExperiment, 
-  postStartEvalExperiment, 
-  postCancelEvalExperiment 
+import {
+  getEvalExperimentList,
+  deleteEvalExperiment,
+  postStartEvalExperiment,
+  postCancelEvalExperiment
 } from '@/web/core/evaluation/evaluation';
 
 const EvaluationExperiments = () => {
@@ -43,11 +43,20 @@ const EvaluationExperiments = () => {
 
   const [searchKey, setSearchKey] = useState('');
 
+  // 适配器函数来匹配usePagination的参数格式
+  const getExperimentListAdapter = async (params: any) => {
+    return getEvalExperimentList({
+      searchKey: params.searchKey || '',
+      pageNum: params.pageNum || 1,
+      pageSize: params.pageSize || 20
+    });
+  };
+
   const {
     data: experimentList,
     Pagination,
     getData: fetchData
-  } = usePagination(getEvalExperimentList, {
+  } = usePagination(getExperimentListAdapter, {
     pageSize: 20,
     params: {
       searchKey
@@ -105,9 +114,7 @@ const EvaluationExperiments = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Badge colorScheme={getStatusColor(status)}>
-          {status.toUpperCase()}
-        </Badge>
+        <Badge colorScheme={getStatusColor(status)}>{status.toUpperCase()}</Badge>
       )
     },
     {
@@ -142,7 +149,7 @@ const EvaluationExperiments = () => {
           <MyTooltip label={t('common:View')}>
             <IconButton
               aria-label="View"
-              icon={<MyIcon name="view" w="14px" />}
+              icon={<MyIcon name="common/viewLight" w="14px" />}
               variant="ghost"
               size="sm"
               onClick={() => router.push(`/dashboard/evaluation/experiments/${record.id}`)}
@@ -152,7 +159,7 @@ const EvaluationExperiments = () => {
             <MyTooltip label={t('common:Start')}>
               <IconButton
                 aria-label="Start"
-                icon={<MyIcon name="play" w="14px" />}
+                icon={<MyIcon name="core/chat/chatLight" w="14px" />}
                 variant="ghost"
                 size="sm"
                 colorScheme="green"
@@ -174,19 +181,20 @@ const EvaluationExperiments = () => {
           )}
           <PopoverConfirm
             onConfirm={() => onDeleteExperiment(record.id)}
-            title={t('common:Delete')}
-            description={t('common:Delete Confirm')}
-          >
-            <MyTooltip label={t('common:Delete')}>
-              <IconButton
-                aria-label="Delete"
-                icon={<MyIcon name="delete" w="14px" />}
-                variant="ghost"
-                size="sm"
-                colorScheme="red"
-              />
-            </MyTooltip>
-          </PopoverConfirm>
+            content={t('common:Delete Confirm')}
+            type="delete"
+            Trigger={
+              <MyTooltip label={t('common:Delete')}>
+                <IconButton
+                  aria-label="Delete"
+                  icon={<MyIcon name="common/trash" w="14px" />}
+                  variant="ghost"
+                  size="sm"
+                  colorScheme="red"
+                />
+              </MyTooltip>
+            }
+          />
         </Flex>
       )
     }
@@ -194,55 +202,62 @@ const EvaluationExperiments = () => {
 
   return (
     <DashboardContainer>
-      <MyBox>
-        <Flex justifyContent="space-between" alignItems="center" mb={4}>
-          <Box fontSize="2xl" fontWeight="bold">
-            {t('dashboard_evaluation:Evaluation Experiments')}
-          </Box>
-          <Button
-            leftIcon={<MyIcon name="add" w="14px" />}
-            onClick={() => router.push('/dashboard/evaluation/experiments/create')}
-          >
-            {t('common:Create')}
-          </Button>
-        </Flex>
+      {({ MenuIcon }) => (
+        <MyBox>
+          <Flex justifyContent="space-between" alignItems="center" mb={4}>
+            <Box fontSize="2xl" fontWeight="bold">
+              {t('dashboard_evaluation:Experiments')}
+            </Box>
+            <Button
+              leftIcon={<MyIcon name="common/addLight" w="14px" />}
+              onClick={() => router.push('/dashboard/evaluation/experiments/create')}
+            >
+              {t('common:Create')}
+            </Button>
+          </Flex>
 
-        <Flex mb={4}>
-          <SearchInput
-            placeholder={t('common:Search')}
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-            onSearch={() => fetchData()}
-          />
-        </Flex>
+          <Flex mb={4}>
+            <SearchInput
+              placeholder={t('common:Search')}
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+            />
+            <Button onClick={() => fetchData()} size="sm" ml={2}>
+              {t('common:Search')}
+            </Button>
+          </Flex>
 
-        <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                {columns.map((column) => (
-                  <Th key={column.key}>{column.title}</Th>
-                ))}
-              </Tr>
-            </Thead>
-            <Tbody>
-              {experimentList.map((experiment: EvalExperiment) => (
-                <Tr key={experiment.id}>
+          <TableContainer>
+            <Table variant="simple">
+              <Thead>
+                <Tr>
                   {columns.map((column) => (
-                    <Td key={column.key}>
-                      {column.render
-                        ? column.render(experiment[column.dataIndex as keyof EvalExperiment], experiment)
-                        : experiment[column.dataIndex as keyof EvalExperiment]}
-                    </Td>
+                    <Th key={column.key}>{column.title}</Th>
                   ))}
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+              </Thead>
+              <Tbody>
+                {experimentList.map((experiment: EvalExperiment) => (
+                  <Tr key={experiment.id}>
+                    {columns.map((column) => (
+                      <Td key={column.key}>
+                        {column.render
+                          ? column.render(
+                              experiment[column.dataIndex as keyof EvalExperiment] as any,
+                              experiment
+                            )
+                          : String(experiment[column.dataIndex as keyof EvalExperiment] || '')}
+                      </Td>
+                    ))}
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
 
-        <Pagination />
-      </MyBox>
+          <Pagination />
+        </MyBox>
+      )}
     </DashboardContainer>
   );
 };

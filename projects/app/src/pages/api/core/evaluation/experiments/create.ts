@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@fastgpt/service/common/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoEvalExperiment } from '@fastgpt/service/core/evaluation/evalExperimentSchema';
 import { EvalExperiment } from '@fastgpt/service/core/evaluation/domain/EvalExperiment';
 import { addEvaluationExperimentJob } from '@fastgpt/service/core/evaluation/mq';
@@ -10,7 +9,6 @@ import type { CreateEvalExperimentBody } from '@fastgpt/global/core/evaluation/t
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { teamId, tmbId } = await authCert({ req, authToken: true });
-    await connectToDatabase();
 
     const body = req.body as CreateEvalExperimentBody;
 
@@ -23,7 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       evaluator_ids: body.evaluator_ids,
       config: body.config,
       teamId,
-      tmbId
+      tmbId,
+      status: 'pending',
+      progress: { total: 0, completed: 0, failed: 0 },
+      results: []
     });
 
     // 保存到数据库

@@ -1,13 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@fastgpt/service/common/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoEvaluationDataset } from '@fastgpt/service/core/evaluation/evaluationDatasetSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { teamId } = await authCert({ req, authToken: true });
-    await connectToDatabase();
 
     const { id } = req.query as { id: string };
 

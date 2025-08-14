@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@fastgpt/service/common/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoEvaluationDataset } from '@fastgpt/service/core/evaluation/evaluationDatasetSchema';
 import { EvaluationDataset } from '@fastgpt/service/core/evaluation/domain/EvaluationDataset';
 import type { CreateEvaluationDatasetBody } from '@fastgpt/global/core/evaluation/type';
@@ -9,7 +8,6 @@ import type { CreateEvaluationDatasetBody } from '@fastgpt/global/core/evaluatio
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { teamId, tmbId } = await authCert({ req, authToken: true });
-    await connectToDatabase();
 
     const body = req.body as CreateEvaluationDatasetBody;
 

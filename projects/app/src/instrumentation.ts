@@ -62,7 +62,7 @@ export async function register() {
       initAppTemplateTypes();
       // getSystemPlugins(true);
       startMongoWatch();
-      
+
       // 启动评估实验队列
       startEvaluationExperimentQueue();
       startCron();
