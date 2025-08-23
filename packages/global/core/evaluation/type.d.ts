@@ -101,6 +101,16 @@ export type EvaluationSchemaType = {
   finishTime?: Date;
   avgScore?: number;
   errorMessage?: string;
+  evalData: {
+    metricsId: string;
+    metricsScore: number;
+    thresholdValue?: number;
+    summary?: string;
+    summaryStatus: SummaryStatusEnum;
+    errorReason?: string;
+    weight: number;
+  }[];
+  caculate_type: CaculateMethodEnum
 };
 
 // 评估项类型 - 增强版

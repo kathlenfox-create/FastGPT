@@ -2,7 +2,7 @@ import { parseHeaderCert } from '../controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import type { AuthModeType } from '../type';
-import { MongoEvaluation } from '../../../core/evaluation/evalSchema';
+import { MongoEvaluation } from '../../../core/evaluation/task/schema';
 
 export const authEval = async ({
   evalId,

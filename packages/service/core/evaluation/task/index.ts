@@ -1,4 +1,5 @@
 import { MongoEvaluation, MongoEvalItem } from './schema';
+import { MongoEvalMetric } from '../metric/schema';
 import type {
   EvaluationSchemaType,
   EvalItemSchemaType,
@@ -14,7 +15,9 @@ import {
   checkUpdateResult,
   checkDeleteResult
 } from '../common';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { CaculateMethodEnum } from '@fastgpt/global/core/evaluation/constants';
+import { EvaluationStatusEnum, CaculateMethodMap } from '@fastgpt/global/core/evaluation/constants';
+import { Types } from '../../../common/mongo';
 import { evaluationTaskQueue } from '../mq';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -658,5 +661,185 @@ export class EvaluationTaskService {
 
       return Buffer.from(csvRows.join('\n'));
     }
+  }
+
+  // 获取评估总结报告
+  static async getEvaluationSummary(
+    evaluationId: string,
+    auth: AuthModeType
+  ): Promise<{
+    data: Array<{
+      metricsId: string;
+      metricsName: string;
+      metricsScore: number;
+      summary: string;
+      summaryStatus: string;
+      errorReason?: string;
+    }>;
+    avgScore: number;
+  }> {
+    const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
+
+    console.log(`resourceFilter is ${JSON.stringify(resourceFilter)}`)
+    console.log(`==========================`)
+
+    // 查询评估任务
+    const evalId = resourceFilter?._id;
+    console.log(`evalId is ${JSON.stringify(evalId)}`)
+
+    const evaluation = await MongoEvaluation.findOne({ _id: evalId }).lean();
+
+    if (!evaluation) {
+      throw new Error('评估任务不存在或无权限访问');
+    }
+    console.log(`evaluation is ${JSON.stringify(evaluation)}`)
+
+    // 检查评估任务是否已完成
+    if (!evaluation.evalData || evaluation.evalData.length === 0) {
+      throw new Error('评估任务尚未完成或没有评估数据');
+    }
+
+    // 获取指标信息以获取指标名称
+    const metricIds = evaluation.evalData.map(item => item.metricsId);
+    const metrics = await MongoEvalMetric.find({
+      _id: { $in: metricIds.map(id => new Types.ObjectId(id)) },
+      teamId: new Types.ObjectId(evaluation.teamId)
+    }).lean();
+
+    // 创建指标ID到名称的映射
+    const metricNameMap = new Map(
+      metrics.map(metric => [metric._id.toString(), metric.name])
+    );
+
+    console.log(`metricNameMap is ${JSON.stringify(metricNameMap)}`)
+    console.log(`xxxxxxx`)
+
+
+    // 构建返回数据
+    const data = evaluation.evalData.map((item) => ({
+      metricsId: item.metricsId,
+      metricsName: metricNameMap.get(item.metricsId) || item.metricsId,
+      metricsScore: item.metricsScore,
+      summary: item.summary || '',
+      summaryStatus: item.summaryStatus?.toString() || '0',
+      errorReason: item.errorReason
+    }));
+
+    // 计算综合得分
+    const avgScore = evaluation.avgScore || 0;
+
+    return {
+      data,
+      avgScore
+    };
+  }
+
+  // 更新评估总结配置（阈值、权重、计算方式）
+  static async updateEvaluationSummaryConfig(
+    evaluationId: string,
+    caculateType: CaculateMethodEnum,
+    metricsConfig: Array<{
+      metricsId: string;
+      thresholdValue: number;
+      weight?: number;
+    }>,
+    auth: AuthModeType
+  ): Promise<void> {
+    //todo 鉴权
+    // const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
+    // 读取评估信息，校验指标归属
+    const evaluation = await MongoEvaluation.findOne({ _id: evaluationId }).lean();
+    if (!evaluation) throw new Error('Evaluation not found');
+    const evalMetricIdSet = new Set((evaluation.metricIds || []).map((id: any) => id.toString()));
+    for (const m of metricsConfig) {
+      if (!evalMetricIdSet.has(m.metricsId)) {
+        throw new Error(`metricsId ${m.metricsId} 不属于该评估任务`);
+      }
+    }
+
+    // 基于现有 evalData 更新/新增配置（阈值、权重）
+    const currentEvalData: any[] = Array.isArray((evaluation as any).evalData)
+      ? (evaluation as any).evalData
+      : [];
+
+    const configMap = new Map(
+      metricsConfig.map((m) => [m.metricsId, { thresholdValue: m.thresholdValue, weight: m.weight }])
+    );
+
+    const nextEvalDataMap = new Map<string, any>();
+    for (const row of currentEvalData) {
+      nextEvalDataMap.set(row.metricsId, { ...row });
+    }
+    for (const [metricsId, cfg] of configMap) {
+      const existed = nextEvalDataMap.get(metricsId) || { metricsId };
+      nextEvalDataMap.set(metricsId, {
+        ...existed,
+        thresholdValue: cfg.thresholdValue,
+        ...(cfg.weight !== undefined ? { weight: cfg.weight } : {})
+      });
+    }
+
+    const nextEvalData = Array.from(nextEvalDataMap.values());
+
+    await MongoEvaluation.updateOne({ _id: evaluationId },
+      {
+        $set: {
+          evalData: nextEvalData,
+          caculateType: caculateType
+        }
+      });
+  }
+
+  // 获取评估总结配置详情
+  static async getEvaluationSummaryConfig(
+    evaluationId: string,
+    auth: AuthModeType
+  ): Promise<{
+    caculateType: CaculateMethodEnum;
+    caculateTypeName: string;
+    metricsConfig: Array<{
+      metricsId: string;
+      metricsName: string;
+      thresholdValue: number;
+      weight: number;
+    }>;
+  }> {
+    const { resourceFilter } = await validateResourceAccess(evaluationId, auth, 'Evaluation');
+
+    // 查询评估任务
+    const evaluation = await MongoEvaluation.findOne(resourceFilter).lean();
+
+    if (!evaluation) {
+      throw new Error('评估任务不存在或无权限访问');
+    }
+
+    // 获取指标信息以获取指标名称
+    const metricIds = evaluation.evalData?.map(item => item.metricsId) || [];
+    const metrics = await MongoEvalMetric.find({
+      _id: { $in: metricIds.map(id => new Types.ObjectId(id)) },
+      teamId: new Types.ObjectId(evaluation.teamId)
+    }).lean();
+
+    // 创建指标ID到名称的映射
+    const metricNameMap = new Map(
+      metrics.map(metric => [metric._id.toString(), metric.name])
+    );
+
+    // 构建返回数据
+    const metricsConfig = (evaluation.evalData || []).map((item) => ({
+      metricsId: item.metricsId,
+      metricsName: metricNameMap.get(item.metricsId) || item.metricsId,
+      thresholdValue: item.thresholdValue || 0,
+      weight: item.weight || 0
+    }));
+
+    // 获取计算方式和其对应的中文说明
+    const caculateType = evaluation.caculateType || CaculateMethodEnum.mean;
+    
+    return {
+      caculateType,
+      caculateTypeName: CaculateMethodMap[caculateType]?.name || 'Unknown',
+      metricsConfig
+    };
   }
 }

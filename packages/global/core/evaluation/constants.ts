@@ -20,3 +20,59 @@ export const EvaluationStatusMap = {
   }
 };
 export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
+
+
+
+export enum SummaryStatusEnum {
+  pending = 0,
+  generating = 1,
+  completed = 2,
+  failed = 3
+}
+
+export const SummaryStatusMap = {
+  [SummaryStatusEnum.pending]: {
+    name: i18nT('dashboard_evaluation:summary_pending')
+  },
+  [SummaryStatusEnum.generating]: {
+    name: i18nT('dashboard_evaluation:summary_generating')
+  },
+  [SummaryStatusEnum.completed]: {
+    name: i18nT('dashboard_evaluation:summary_done')
+  },
+  [SummaryStatusEnum.failed]: {
+    name: i18nT('dashboard_evaluation:summary_failed')
+  }
+};
+
+export const SummaryStatusValues = Object.keys(SummaryStatusMap).map(Number);
+
+
+// 计算方式枚举
+export enum CaculateMethodEnum {
+  mean = 0,
+  median = 1
+}
+
+export const CaculateMethodMap = {
+  [CaculateMethodEnum.mean]: {
+    name: i18nT('dashboard_evaluation:method_mean')
+  },
+  [CaculateMethodEnum.median]: {
+    name: i18nT('dashboard_evaluation:method_median')
+  }
+};
+
+export const CaculateMethodValues = Object.keys(CaculateMethodMap).map(Number);
+
+
+
+export enum SystemEvalMetrics {
+  AnswerCortness = "answer_cortness",
+  AnswerRelevancy = "answer_relevancy",
+  AnswerSimilarity = "answer_similarity",
+  AnswerPrecision = "context_precision",
+  ContextRecall = "context_recall",
+  Faithfulness = "faithfulness",
+  Custom = "custom"
+}

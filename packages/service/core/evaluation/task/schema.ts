@@ -10,17 +10,43 @@ import type {
 import { UsageCollectionName } from '../../../support/wallet/usage/schema';
 import {
   EvaluationStatusEnum,
-  EvaluationStatusValues
+  EvaluationStatusValues,
+  SummaryStatusValues,
+  SummaryStatusEnum,
+  CaculateMethodEnum
 } from '@fastgpt/global/core/evaluation/constants';
 
 const { Schema } = connectionMongo;
 
 // Collection names
-export const EvaluationCollectionName = 'eval';
+export const EvaluationCollectionName = 'evals';
 export const EvalItemCollectionName = 'eval_items';
 export const EvalDatasetCollectionName = 'eval_datasets';
 export const EvalTargetCollectionName = 'eval_targets';
 export const EvalMetricCollectionName = 'eval_metrics';
+
+
+// EvalData Schema
+const EvalDataSchema = new Schema(
+  {
+    metricsId: { type: String, required: true },
+    metricsScore: { type: Number, required: true },
+    thresholdValue: { type: Number },
+    summary: { type: String },
+    summaryStatus: {
+      type: Number,
+      enum: SummaryStatusValues,
+      default: SummaryStatusEnum.pending
+    },
+    // when summary_status = 'failed' error_reason
+    weight: {
+      type: Number
+    },
+    errorReason: { type: String }
+  },
+  { _id: false }
+);
+
 
 // Evaluation Schema
 const EvaluationSchema = new Schema({
@@ -72,7 +98,14 @@ const EvaluationSchema = new Schema({
   },
   finishTime: Date,
   avgScore: Number,
-  errorMessage: String
+  errorMessage: String,
+  // add eval_data
+  evalData: { type: [EvalDataSchema], default: [] },
+
+  caculateType: {
+    type: Number,
+    enum: CaculateMethodEnum
+  }
 });
 
 EvaluationSchema.index({ teamId: 1 });
@@ -124,6 +157,10 @@ const EvalItemSchema = new Schema({
       error: String
     }
   ],
+  caculateType: {
+    type: Number,
+    enum: EvaluationStatusValues
+  },
   errorMessage: String
 });
 
