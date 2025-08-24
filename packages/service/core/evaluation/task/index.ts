@@ -23,6 +23,13 @@ import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
 
+/**
+ * 根据evalId和status查询eval_items表数据
+ * @param evalId 评估任务ID
+ * @param status 评估状态
+ * @returns 返回匹配的评估项列表
+ */
+
 export class EvaluationTaskService {
   // 创建评估任务
   static async createEvaluation(
@@ -835,11 +842,29 @@ export class EvaluationTaskService {
 
     // 获取计算方式和其对应的中文说明
     const caculateType = evaluation.caculateType || CaculateMethodEnum.mean;
-    
+
     return {
       caculateType,
       caculateTypeName: CaculateMethodMap[caculateType]?.name || 'Unknown',
       metricsConfig
     };
+  }
+
+  static async queryEvalItems(
+    evalId: string,
+    status: EvaluationStatusEnum
+  ): Promise<EvalItemSchemaType[]> {
+    try {
+      const items = await MongoEvalItem.find({
+        evalId,
+        status
+      })
+        .sort({ createTime: -1 })
+        .lean();
+
+      return items;
+    } catch (error) {
+      throw new Error(`查询评估项失败: ${error}`);
+    }
   }
 }
