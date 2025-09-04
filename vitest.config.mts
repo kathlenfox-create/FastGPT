@@ -17,6 +17,7 @@ export default defineConfig({
     pool: 'threads',
     include: ['test/test.ts', 'test/cases/**/*.test.ts', 'projects/app/test/**/*.test.ts'],
     testTimeout: 20000,
+    hookTimeout: 30000,
     reporters: ['github-actions', 'default']
   },
   resolve: {
