@@ -1,4 +1,7 @@
 import { parseHeaderCert } from '../controller';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
+import { MongoEvaluation } from '../../../core/evaluation/task/schema';
 import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import type { EvalDatasetCollectionSchemaType } from '@fastgpt/global/core/evaluation/dataset/type';
 import type { AuthModeType, AuthResponseType } from '../type';
