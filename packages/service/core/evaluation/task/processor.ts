@@ -15,6 +15,7 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { concatUsage } from '../../../support/wallet/usage/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { EvaluationSummaryService } from '../summary';
 
 // Sleep utility function
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -120,16 +121,6 @@ const finishEvaluationTask = async (evalId: string) => {
           },
           queuingCount: {
             $sum: { $cond: [{ $eq: ['$status', EvaluationStatusEnum.queuing] }, 1, 0] }
-          },
-          // Calculate average score only for successfully completed items
-          avgScore: {
-            $avg: {
-              $cond: [
-                { $eq: ['$status', EvaluationStatusEnum.completed] },
-                '$evaluatorOutput.score',
-                null
-              ]
-            }
           }
         }
       }
@@ -146,8 +137,7 @@ const finishEvaluationTask = async (evalId: string) => {
       completedCount = 0,
       errorCount = 0,
       evaluatingCount = 0,
-      queuingCount = 0,
-      avgScore = 0
+      queuingCount = 0
     } = statsResult;
 
     // Check if truly completed
@@ -168,7 +158,6 @@ const finishEvaluationTask = async (evalId: string) => {
       {
         $set: {
           finishTime: new Date(),
-          avgScore: avgScore != null ? Math.round(avgScore * 100) / 100 : undefined,
           status: taskStatus,
           // Use statistics object to store execution statistics
           statistics: {
@@ -182,8 +171,25 @@ const finishEvaluationTask = async (evalId: string) => {
 
     addLog.info(
       `[Evaluation] Task completed: ${evalId}, status: ${taskStatus}, total: ${totalCount}, ` +
-        `success: ${completedCount}, failed: ${errorCount}, avg score: ${avgScore ? avgScore.toFixed(2) : 'N/A'}`
+        `success: ${completedCount}, failed: ${errorCount}`
     );
+
+    // Auto-generate summary reports for completed tasks
+    // This is done asynchronously to avoid blocking task completion
+    try {
+      addLog.info('[Evaluation] Starting auto summary report generation', {
+        evalId
+      });
+
+      // Use internal method without auth complexity
+      await EvaluationSummaryService.generateSummaryReportsInternal(evalId);
+    } catch (summaryError) {
+      // Log error but don't affect task completion status
+      addLog.error('[Evaluation] Auto summary generation failed, but task completed successfully', {
+        evalId,
+        summaryError
+      });
+    }
   } catch (error) {
     addLog.error(`[Evaluation] Error occurred while completing task: ${evalId}`, error);
 

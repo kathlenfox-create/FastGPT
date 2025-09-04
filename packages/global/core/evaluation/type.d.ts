@@ -41,6 +41,12 @@ export interface RuntimeConfig {
 export interface EvaluatorSchema {
   metric: EvaluationMetricSchemaType; // Contains complete metric configuration
   runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
+  caculateType: CaculateMethodEnum; // Calculation method (mean or median)
+  thresholdValue: number; // Threshold
+  weight: number; // Weight
+  summary?: string; // Summary
+  summaryStatus: SummaryStatusEnum; // Summary status
+  errorReason?: string; // Error reason
 }
 
 // Statistics information for evaluation task
@@ -48,6 +54,9 @@ export interface EvaluationStatistics {
   totalItems: number;
   completedItems: number;
   errorItems: number;
+  metric: EvalMetricSchemaType; // Contains complete metric configuration
+  runtimeConfig: RuntimeConfig; // Runtime configuration, such as llm model etc
+  metricsScore?: number; // Metric score
 }
 
 // Improved evaluation task types
@@ -64,14 +73,12 @@ export type EvaluationSchemaType = {
   status: EvaluationStatusEnum;
   createTime: Date;
   finishTime?: Date;
-  avgScore?: number;
   errorMessage?: string;
   statistics?: EvaluationStatistics;
 };
 
-// Evaluation item types (atomic: one dataItem + one target + one evaluator)
+// Evaluation item type (atomic: one dataItem + one target + one evaluator)
 export type EvaluationItemSchemaType = {
-  _id: string;
   evalId: string;
   // Dependent component configurations
   dataItem: EvalDatasetDataSchemaType;
@@ -178,4 +185,23 @@ export interface EvaluationTaskJobData {
 export interface EvaluationItemJobData {
   evalId: string;
   evalItemId: string;
+}
+
+// ===== Summary Generate API Types =====
+
+export interface GenerateSummaryParams {
+  evalId: string;
+  metricsIds: string[];
+}
+
+export interface GenerateSummaryResponse {
+  success: boolean;
+  message: string;
+  taskId?: string;
+}
+
+export interface SummaryGenerationTaskData {
+  evalId: string;
+  metricId: string;
+  evaluatorIndex: number;
 }
