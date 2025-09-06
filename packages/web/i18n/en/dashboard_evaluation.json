@@ -244,4 +244,11 @@
   "auto_quality_eval_add_tip": "开启后将自动对新增的数据进行质量评测",
   "quality_eval_model_label": "质量评测模型",
   "select_quality_eval_model_placeholder": "请选择质量评测模型"
+  "modify_reason_input_placeholder": "修改理由",
+  "summary_pending": "Pending",
+  "summary_generating": "Generating",
+  "summary_done": "Completed",
+  "summary_failed": "Failed",
+  "method_mean": "Mean",
+  "method_median": "Median"
 }

@@ -14,7 +14,7 @@ import {
   removeEvaluationTaskJob,
   removeEvaluationItemJobs
 } from './mq';
-import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { createEvaluationUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '../../../common/system/log';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -32,11 +32,10 @@ export class EvaluationTaskService {
     await checkTeamAIPoints(teamId);
 
     // Create usage record
-    const { billId } = await createTrainingUsage({
+    const { billId } = await createEvaluationUsage({
       teamId,
       tmbId,
-      appName: evaluationParams.name,
-      billSource: UsageSourceEnum.evaluation
+      appName: evaluationParams.name
     });
 
     const evaluation = await MongoEvaluation.create({

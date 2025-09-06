@@ -240,4 +240,11 @@
   "auto_quality_eval_add_tip": "開啟後將自動對新增的數據進行質量評測",
   "quality_eval_model_label": "質量評測模型",
   "select_quality_eval_model_placeholder": "請選擇質量評測模型"
+  "modify_reason_input_placeholder": "修改理由",
+  "summary_pending": "待生成",
+  "summary_generating": "生成中",
+  "summary_done": "已完成",
+  "summary_failed": "生成失敗",
+  "method_mean": "平均值",
+  "method_median": "中位數"
 }
