@@ -252,5 +252,11 @@
   "quality_evaluation_question": "进行质量评测吗",
   "model_change_notice": "更改模型后将对后续评测的任务生效。",
   "evaluation_model": "评测模型",
-  "select_evaluation_model": "请选择评测模型"
+  "select_evaluation_model": "请选择评测模型",
+  "summary_pending": "待生成",
+  "summary_generating": "生成中",
+  "summary_done": "已完成",
+  "summary_failed": "生成失败",
+  "method_mean": "平均值",
+  "method_median": "中位数"
 }

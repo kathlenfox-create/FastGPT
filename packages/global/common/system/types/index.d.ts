@@ -141,6 +141,11 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+
+  // Evaluation settings
+  evaluation?: {
+    defaultThreshold?: number;
+  };
 };
 
 export type customPdfParseType = {

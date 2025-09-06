@@ -13,8 +13,9 @@ import { Types } from 'mongoose';
 import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { concatUsage } from '../../../support/wallet/usage/controller';
+import { concatUsage, evaluationUsageIndexMap } from '../../../support/wallet/usage/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { createMergedEvaluationUsage } from '../utils/usage';
 
 // Sleep utility function
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -264,35 +265,6 @@ const handleEvalItemError = async (evalItemId: string, evalId: string, error: an
       error
     );
   }
-};
-
-// Create merged evaluation usage record
-const createMergedEvaluationUsage = async (params: {
-  evalId: string;
-  teamId: string;
-  tmbId: string;
-  usageId: string;
-  totalPoints: number;
-  type: 'target' | 'metric';
-  inputTokens?: number;
-  outputTokens?: number;
-}) => {
-  const { evalId, teamId, tmbId, usageId, totalPoints, type, inputTokens, outputTokens } = params;
-
-  const listIndex = type === 'target' ? 0 : 1;
-
-  await concatUsage({
-    billId: usageId,
-    teamId,
-    tmbId,
-    totalPoints,
-    inputTokens: inputTokens || 0,
-    outputTokens: outputTokens || 0,
-    count: type === 'target' ? 1 : 0,
-    listIndex
-  });
-
-  addLog.debug(`[Evaluation] Record usage: ${evalId}, ${type}, ${totalPoints} points`);
 };
 
 // Evaluation task processor

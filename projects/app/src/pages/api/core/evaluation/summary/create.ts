@@ -6,7 +6,7 @@ import type {
   GenerateSummaryParams,
   GenerateSummaryResponse
 } from '@fastgpt/global/core/evaluation/type';
-import { authEvaluationTaskRead } from '@fastgpt/service/core/evaluation/common';
+import { authEvaluationTaskWrite } from '@fastgpt/service/core/evaluation/common';
 
 async function handler(
   req: ApiRequestProps<GenerateSummaryParams>
@@ -19,7 +19,7 @@ async function handler(
       return Promise.reject('Evaluation task ID and metrics ID array are required');
     }
 
-    await authEvaluationTaskRead(evalId, {
+    await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
       authToken: true
@@ -38,11 +38,6 @@ async function handler(
       success: true,
       message: 'Report generation task started'
     };
-
-    addLog.info('[EvaluationSummary] Report generation task started successfully', {
-      evalId,
-      metricsCount: metricsIds.length
-    });
 
     return response;
   } catch (error) {
