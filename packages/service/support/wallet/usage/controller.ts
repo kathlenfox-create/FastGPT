@@ -236,20 +236,25 @@ export const pushLLMTrainingUsage = async ({
   return { totalPoints };
 };
 
+// Evaluation usage index mapping for better maintenance
+export const evaluationUsageIndexMap = {
+  target: 0, // 生成应用回答
+  metric: 1, // 指标执行评测
+  summary: 2 // 生成总结报告
+} as const;
+
 export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
-  model,
   session
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
-  model: string;
   session?: ClientSession;
 }) => {
-  const [{ _id: usageId }] = await MongoUsage.create(
+  const [{ _id }] = await MongoUsage.create(
     [
       {
         teamId,
@@ -267,8 +272,13 @@ export const createEvaluationUsage = async ({
             moduleName: i18nT('account_usage:answer_accuracy'),
             amount: 0,
             inputTokens: 0,
-            outputTokens: 0,
-            model
+            outputTokens: 0
+          },
+          {
+            moduleName: i18nT('account_usage:evaluation_summary_generation'),
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0
           }
         ]
       }
@@ -276,5 +286,5 @@ export const createEvaluationUsage = async ({
     { session, ordered: true }
   );
 
-  return { usageId };
+  return { billId: String(_id) };
 };

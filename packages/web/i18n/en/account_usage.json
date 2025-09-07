@@ -51,5 +51,12 @@
   "total_usage": "Total Usage",
   "usage_detail": "Details",
   "user_type": "type",
-  "wecom": "WeCom"
+  "wecom": "WeCom",
+  "evaluation_target_llm_generation": "Evaluation - Target Generation",
+  "evaluation_target_embedding_retrieval": "Evaluation - Embedding Retrieval",
+  "evaluation_metric_llm_judgment": "Evaluation - Metric Judgment",
+  "evaluation_metric_embedding_similarity": "Evaluation - Similarity Calculation",
+  "evaluation_summary_generation": "Evaluation - Summary Generation",
+  "evaluation_embedding_retrieval": "Evaluation - Embedding Retrieval",
+  "evaluation_answer_accuracy": "Evaluation - Answer Accuracy"
 }

@@ -53,5 +53,12 @@
   "total_usage": "总消耗",
   "usage_detail": "使用详情",
   "user_type": "类型",
-  "wecom": "企业微信"
+  "wecom": "企业微信",
+  "evaluation_target_llm_generation": "评估-目标生成",
+  "evaluation_target_embedding_retrieval": "评估-向量检索",
+  "evaluation_metric_llm_judgment": "评估-指标判断",
+  "evaluation_metric_embedding_similarity": "评估-相似度计算",
+  "evaluation_summary_generation": "评估-总结生成",
+  "evaluation_embedding_retrieval": "评估-向量检索",
+  "evaluation_answer_accuracy": "评估-回答准确性"
 }
