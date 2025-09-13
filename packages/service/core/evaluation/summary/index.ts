@@ -63,9 +63,9 @@ export class EvaluationSummaryService {
         metricsId: metricId,
         metricsName: evaluator.metric.name,
         metricsScore: calculatedMetric?.metricsScore || 0,
-        summary: evaluator.summary || '',
-        summaryStatus: evaluator.summaryStatus?.toString() || '0',
-        errorReason: evaluator.errorReason,
+        summary: evaluator.summaryConfig?.summary || '',
+        summaryStatus: evaluator.summaryConfig?.summaryStatus?.toString() || '0',
+        errorReason: evaluator.summaryConfig?.errorReason,
         completedItemCount: calculatedMetric?.totalCount || 0,
         overThresholdItemCount: calculatedMetric?.aboveThresholdCount || 0
       };
@@ -166,7 +166,7 @@ export class EvaluationSummaryService {
         if (stats) {
           // Select score based on current evaluator's calculation method
           const metricsScore =
-            evaluator.calculateType === CalculateMethodEnum.median
+            evaluator.summaryConfig?.calculateType === CalculateMethodEnum.median
               ? Math.round(stats.medianScore * 100) / 100
               : Math.round(stats.avgScore * 100) / 100;
 
@@ -178,7 +178,7 @@ export class EvaluationSummaryService {
           const thresholdPassRate =
             stats.count > 0 ? Math.round((aboveThresholdCount / stats.count) * 10000) / 100 : 0;
 
-          const weight = evaluator.weight || 0;
+          const weight = evaluator.summaryConfig?.weight || 0;
 
           metricsData.push({
             metricsId: metricId,
@@ -200,7 +200,7 @@ export class EvaluationSummaryService {
             metricsId: metricId,
             metricsName: evaluator.metric.name,
             metricsScore: 0,
-            weight: evaluator.weight || 0,
+            weight: evaluator.summaryConfig?.weight || 0,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
             thresholdPassRate: 0,
@@ -234,7 +234,7 @@ export class EvaluationSummaryService {
         metricsId: evaluator.metric._id.toString(),
         metricsName: evaluator.metric.name,
         metricsScore: 0,
-        weight: evaluator.weight || 0,
+        weight: evaluator.summaryConfig?.weight || 0,
         thresholdValue: evaluator.thresholdValue || 0,
         aboveThresholdCount: 0,
         thresholdPassRate: 0,
@@ -286,8 +286,11 @@ export class EvaluationSummaryService {
         return {
           ...evaluator,
           thresholdValue: config.thresholdValue,
-          ...(config.weight !== undefined ? { weight: config.weight } : {}),
-          ...(config.calculateType !== undefined ? { calculateType: config.calculateType } : {})
+          summaryConfig: {
+            ...evaluator.summaryConfig,
+            ...(config.weight !== undefined ? { weight: config.weight } : {}),
+            ...(config.calculateType !== undefined ? { calculateType: config.calculateType } : {})
+          }
         };
       }
       return evaluator;
@@ -323,7 +326,7 @@ export class EvaluationSummaryService {
 
     // Get calculation type from first evaluator (since all metrics use the same type)
     const firstEvaluator = evaluation.evaluators?.[0];
-    const calculateType = firstEvaluator?.calculateType || CalculateMethodEnum.mean;
+    const calculateType = firstEvaluator?.summaryConfig?.calculateType || CalculateMethodEnum.mean;
     const calculateTypeName =
       CaculateMethodMap[calculateType as CalculateMethodEnum]?.name || 'Unknown';
 
@@ -333,7 +336,7 @@ export class EvaluationSummaryService {
         metricsId: evaluator.metric._id.toString(),
         metricsName: evaluator.metric.name,
         thresholdValue: evaluator.thresholdValue || 0,
-        weight: evaluator.weight || 0
+        weight: evaluator.summaryConfig?.weight || 0
       };
     });
 
@@ -635,7 +638,7 @@ export class EvaluationSummaryService {
       { _id: evalId },
       {
         $set: {
-          [`evaluators.${evaluatorIndex}.summaryStatus`]: status
+          [`evaluators.${evaluatorIndex}.summaryConfig.summaryStatus`]: status
         }
       }
     );
@@ -652,14 +655,14 @@ export class EvaluationSummaryService {
     errorReason?: string
   ): Promise<void> {
     const updateData: any = {
-      [`evaluators.${evaluatorIndex}.summaryStatus`]: status,
-      [`evaluators.${evaluatorIndex}.summary`]: summary
+      [`evaluators.${evaluatorIndex}.summaryConfig.summaryStatus`]: status,
+      [`evaluators.${evaluatorIndex}.summaryConfig.summary`]: summary
     };
 
     if (errorReason) {
-      updateData[`evaluators.${evaluatorIndex}.errorReason`] = errorReason;
+      updateData[`evaluators.${evaluatorIndex}.summaryConfig.errorReason`] = errorReason;
     } else {
-      updateData[`evaluators.${evaluatorIndex}.errorReason`] = undefined;
+      updateData[`evaluators.${evaluatorIndex}.summaryConfig.errorReason`] = undefined;
     }
 
     await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateData });

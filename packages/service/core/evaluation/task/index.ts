@@ -122,9 +122,17 @@ export class EvaluationTaskService {
     });
 
     // Apply default configuration to evaluators (weights, thresholds, etc.)
+    console.log(
+      '[DEBUG] evaluationParams.evaluators before buildEvalDataConfig:',
+      JSON.stringify(evaluationParams.evaluators, null, 2)
+    );
     const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
+    console.log(
+      '[DEBUG] evaluatorsWithDefaultConfig after buildEvalDataConfig:',
+      JSON.stringify(evaluatorsWithDefaultConfig, null, 2)
+    );
 
-    const evaluation = await MongoEvaluation.create({
+    const dataToCreate = {
       ...evaluationParams,
       evaluators: evaluatorsWithDefaultConfig,
       teamId,
@@ -132,8 +140,15 @@ export class EvaluationTaskService {
       usageId: billId,
       status: EvaluationStatusEnum.queuing,
       createTime: new Date()
-    });
+    };
+    console.log('[DEBUG] data to create in MongoDB:', JSON.stringify(dataToCreate, null, 2));
 
+    const evaluation = await MongoEvaluation.create(dataToCreate);
+
+    console.log(
+      '[DEBUG] evaluation object before return:',
+      JSON.stringify(evaluation.toObject(), null, 2)
+    );
     return evaluation.toObject();
   }
 

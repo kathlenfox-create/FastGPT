@@ -63,20 +63,24 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): EvaluatorSch
 
   const result = evaluators.map((evaluator, index) => ({
     ...evaluator,
-    weight: evaluator.weight ?? weights[index], // 如果已有权重则保留，否则使用计算的权重
     thresholdValue: evaluator.thresholdValue ?? defaultThreshold, // 如果已有阈值则保留，否则使用环境配置的默认值
-    summaryStatus: evaluator.summaryStatus ?? SummaryStatusEnum.pending,
-    calculateType: evaluator.calculateType ?? CalculateMethodEnum.mean
+    summaryConfig: {
+      weight: evaluator.summaryConfig?.weight ?? weights[index], // 如果已有权重则保留，否则使用计算的权重
+      summaryStatus: evaluator.summaryConfig?.summaryStatus ?? SummaryStatusEnum.pending,
+      calculateType: evaluator.summaryConfig?.calculateType ?? CalculateMethodEnum.mean,
+      summary: evaluator.summaryConfig?.summary,
+      errorReason: evaluator.summaryConfig?.errorReason
+    }
   }));
 
   addLog.debug('[buildEvalDataConfig] 处理后的evaluators:', {
     evaluators: result.map((evaluator) => ({
       metricId: evaluator.metric._id,
       metricName: evaluator.metric.name,
-      weight: evaluator.weight,
+      weight: evaluator.summaryConfig?.weight,
       thresholdValue: evaluator.thresholdValue,
-      calculateType: evaluator.calculateType,
-      summaryStatus: evaluator.summaryStatus
+      calculateType: evaluator.summaryConfig?.calculateType,
+      summaryStatus: evaluator.summaryConfig?.summaryStatus
     }))
   });
 

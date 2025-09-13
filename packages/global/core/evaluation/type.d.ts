@@ -21,16 +21,21 @@ export interface RuntimeConfig {
   embedding?: string; // Embedding model selection
 }
 
-// Evaluator configuration type
-export interface EvaluatorSchema {
-  metric: EvalMetricSchemaType; // Contains complete metric configuration
-  runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
+// Summary configuration type
+export interface SummaryConfig {
   weight?: number;
-  thresholdValue?: number;
   calculateType?: CalculateMethodEnum;
   summary?: string;
   summaryStatus?: SummaryStatusEnum;
   errorReason?: string;
+}
+
+// Evaluator configuration type
+export interface EvaluatorSchema {
+  metric: EvalMetricSchemaType; // Contains complete metric configuration
+  runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
+  thresholdValue?: number;
+  summaryConfig?: SummaryConfig;
 }
 
 // Statistics information for evaluation task

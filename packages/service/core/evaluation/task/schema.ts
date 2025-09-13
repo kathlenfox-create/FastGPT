@@ -56,36 +56,44 @@ export const EvaluationEvaluatorSchema = new Schema(
       required: false,
       default: {}
     },
-    weight: {
-      type: Number,
-      required: false,
-      default: 0
-    },
     thresholdValue: {
       type: Number,
       required: false,
       default: 80
     },
-    calculateType: {
-      type: Number,
-      enum: CaculateMethodValues,
-      default: CalculateMethodEnum.mean
-    },
-    summary: {
-      type: String,
-      required: false
-    },
-    summaryStatus: {
-      type: Number,
-      enum: SummaryStatusValues,
-      default: SummaryStatusEnum.pending
-    },
-    errorReason: {
-      type: String,
-      required: false
+    summaryConfig: {
+      type: {
+        weight: {
+          type: Number,
+          required: false,
+          default: 0
+        },
+        calculateType: {
+          type: Number,
+          enum: CaculateMethodValues,
+          default: CalculateMethodEnum.mean
+        },
+        summary: {
+          type: String,
+          required: false
+        },
+        summaryStatus: {
+          type: Number,
+          enum: SummaryStatusValues,
+          default: SummaryStatusEnum.pending
+        },
+        errorReason: {
+          type: String,
+          required: false
+        }
+      },
+      required: false,
+      default: {}
     }
   },
-  { _id: false }
+  {
+    _id: false
+  }
 );
 
 // Collection names
