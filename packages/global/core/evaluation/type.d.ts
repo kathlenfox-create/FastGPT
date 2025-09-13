@@ -28,7 +28,6 @@ export interface EvaluatorSchema {
   weight?: number;
   thresholdValue?: number;
   calculateType?: CalculateMethodEnum;
-  metricsScore?: number;
   summary?: string;
   summaryStatus?: SummaryStatusEnum;
   errorReason?: string;

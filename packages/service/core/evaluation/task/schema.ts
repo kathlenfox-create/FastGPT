@@ -71,10 +71,6 @@ export const EvaluationEvaluatorSchema = new Schema(
       enum: CaculateMethodValues,
       default: CalculateMethodEnum.mean
     },
-    metricsScore: {
-      type: Number,
-      required: false
-    },
     summary: {
       type: String,
       required: false

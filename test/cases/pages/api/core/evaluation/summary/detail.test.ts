@@ -55,7 +55,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 85.5,
           summary: '整体表现良好，在大部分测试用例中都能提供准确的回答。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -64,7 +63,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-2',
           metricsName: '相关性',
-          metricsScore: 78.2,
           summary: '回答与问题的相关性较好，但在某些复杂场景下需要改进。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -148,7 +146,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '流畅性',
-          metricsScore: 92.3,
           summary: '生成的文本流畅自然，语法错误极少。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 50,
@@ -168,7 +165,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
     const result = await handler(mockReq);
 
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].metricsScore).toBe(92.3);
+    expect(result.data[0].metricsName).toBe('流畅性');
     expect(result.aggregateScore).toBe(92.3);
   });
 
@@ -178,7 +175,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 85.5,
           summary: '评估完成，表现良好。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -187,7 +183,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-2',
           metricsName: '相关性',
-          metricsScore: 0,
           summary: '',
           summaryStatus: SummaryStatusEnum.failed.toString(),
           errorReason: 'AI 服务超时',
@@ -218,7 +213,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 85.5,
           summary: '',
           summaryStatus: SummaryStatusEnum.generating.toString(),
           completedItemCount: 100,
@@ -273,7 +267,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 85.5,
           summary: '测试总结',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -333,7 +326,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 0,
           summary: '评估结果显示准确性较低，需要改进。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -352,7 +344,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
 
     const result = await handler(mockReq);
 
-    expect(result.data[0].metricsScore).toBe(0);
+    expect(result.data[0].overThresholdItemCount).toBe(0);
     expect(result.data[0].overThresholdItemCount).toBe(0);
     expect(result.aggregateScore).toBe(0);
   });
@@ -363,7 +355,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 98.7,
           summary: '评估结果优秀，准确性极高。',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -382,7 +373,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
 
     const result = await handler(mockReq);
 
-    expect(result.data[0].metricsScore).toBe(98.7);
+    expect(result.data[0].overThresholdItemCount).toBe(99);
     expect(result.data[0].overThresholdItemCount).toBe(99);
     expect(result.aggregateScore).toBe(98.7);
   });
@@ -393,7 +384,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-1',
           metricsName: '准确性',
-          metricsScore: 85.5,
           summary: '准确性良好',
           summaryStatus: SummaryStatusEnum.completed.toString(),
           completedItemCount: 100,
@@ -402,7 +392,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-2',
           metricsName: '相关性',
-          metricsScore: 0,
           summary: '',
           summaryStatus: SummaryStatusEnum.generating.toString(),
           completedItemCount: 0,
@@ -411,7 +400,6 @@ describe('Get Evaluation Summary Detail API Handler', () => {
         {
           metricsId: 'metric-3',
           metricsName: '流畅性',
-          metricsScore: 0,
           summary: '',
           summaryStatus: SummaryStatusEnum.failed.toString(),
           errorReason: 'Token 不足',

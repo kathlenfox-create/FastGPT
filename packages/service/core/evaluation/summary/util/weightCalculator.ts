@@ -66,8 +66,7 @@ export function buildEvalDataConfig(evaluators: EvaluatorSchema[]): EvaluatorSch
     weight: evaluator.weight ?? weights[index], // 如果已有权重则保留，否则使用计算的权重
     thresholdValue: evaluator.thresholdValue ?? defaultThreshold, // 如果已有阈值则保留，否则使用环境配置的默认值
     summaryStatus: evaluator.summaryStatus ?? SummaryStatusEnum.pending,
-    calculateType: evaluator.calculateType ?? CalculateMethodEnum.mean,
-    metricsScore: evaluator.metricsScore ?? 0
+    calculateType: evaluator.calculateType ?? CalculateMethodEnum.mean
   }));
 
   addLog.debug('[buildEvalDataConfig] 处理后的evaluators:', {
