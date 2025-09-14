@@ -53,19 +53,20 @@ export class EvaluationSummaryService {
     const calculatedData = await this.calculateMetricsScores(evaluation);
 
     // Build return data, merge calculation results and existing configurations
-    const data = (evaluation.evaluators || []).map((evaluator) => {
+    const data = evaluation.evaluators.map((evaluator, index) => {
       const metricId = evaluator.metric._id.toString();
       const calculatedMetric = calculatedData.metricsData.find(
         (item) => item.metricsId === metricId
       );
+      const summaryConfig = evaluation.summaryConfigs[index];
 
       return {
         metricsId: metricId,
         metricsName: evaluator.metric.name,
         metricsScore: calculatedMetric?.metricsScore || 0,
-        summary: evaluator.summaryConfig?.summary || '',
-        summaryStatus: evaluator.summaryConfig?.summaryStatus?.toString() || '0',
-        errorReason: evaluator.summaryConfig?.errorReason,
+        summary: summaryConfig.summary,
+        summaryStatus: summaryConfig.summaryStatus.toString(),
+        errorReason: summaryConfig.errorReason,
         completedItemCount: calculatedMetric?.totalCount || 0,
         overThresholdItemCount: calculatedMetric?.aboveThresholdCount || 0
       };
@@ -159,14 +160,15 @@ export class EvaluationSummaryService {
       let totalWeightedScore = 0;
       let totalWeight = 0;
 
-      (evaluation.evaluators || []).forEach((evaluator) => {
+      evaluation.evaluators.forEach((evaluator, index) => {
         const metricId = evaluator.metric._id.toString();
         const stats = processedStats.find((s) => s._id === metricId);
+        const summaryConfig = evaluation.summaryConfigs[index];
 
         if (stats) {
           // Select score based on current evaluator's calculation method
           const metricsScore =
-            evaluator.summaryConfig?.calculateType === CalculateMethodEnum.median
+            summaryConfig.calculateType === CalculateMethodEnum.median
               ? Math.round(stats.medianScore * 100) / 100
               : Math.round(stats.avgScore * 100) / 100;
 
@@ -178,7 +180,7 @@ export class EvaluationSummaryService {
           const thresholdPassRate =
             stats.count > 0 ? Math.round((aboveThresholdCount / stats.count) * 10000) / 100 : 0;
 
-          const weight = evaluator.summaryConfig?.weight || 0;
+          const weight = summaryConfig.weight;
 
           metricsData.push({
             metricsId: metricId,
@@ -200,7 +202,7 @@ export class EvaluationSummaryService {
             metricsId: metricId,
             metricsName: evaluator.metric.name,
             metricsScore: 0,
-            weight: evaluator.summaryConfig?.weight || 0,
+            weight: summaryConfig.weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
             thresholdPassRate: 0,
@@ -230,16 +232,19 @@ export class EvaluationSummaryService {
       });
 
       // Return default values
-      const defaultData = (evaluation.evaluators || []).map((evaluator) => ({
-        metricsId: evaluator.metric._id.toString(),
-        metricsName: evaluator.metric.name,
-        metricsScore: 0,
-        weight: evaluator.summaryConfig?.weight || 0,
-        thresholdValue: evaluator.thresholdValue || 0,
-        aboveThresholdCount: 0,
-        thresholdPassRate: 0,
-        totalCount: 0
-      }));
+      const defaultData = evaluation.evaluators.map((evaluator, index) => {
+        const summaryConfig = evaluation.summaryConfigs[index];
+        return {
+          metricsId: evaluator.metric._id.toString(),
+          metricsName: evaluator.metric.name,
+          metricsScore: 0,
+          weight: summaryConfig.weight,
+          thresholdValue: evaluator.thresholdValue || 0,
+          aboveThresholdCount: 0,
+          thresholdPassRate: 0,
+          totalCount: 0
+        };
+      });
 
       return {
         metricsData: defaultData,
@@ -278,32 +283,72 @@ export class EvaluationSummaryService {
       ])
     );
 
-    // Update corresponding configuration in evaluators array
+    // Update corresponding configuration in evaluators array and summaryConfigs
     const updatedEvaluators = (evaluation.evaluators || []).map((evaluator: any) => {
       const metricId = evaluator.metric._id.toString();
       const config = configMap.get(metricId);
       if (config) {
         return {
           ...evaluator,
-          thresholdValue: config.thresholdValue,
-          summaryConfig: {
-            ...evaluator.summaryConfig,
-            ...(config.weight !== undefined ? { weight: config.weight } : {}),
-            ...(config.calculateType !== undefined ? { calculateType: config.calculateType } : {})
-          }
+          thresholdValue: config.thresholdValue
         };
       }
       return evaluator;
     });
 
+    // Update summaryConfigs array
+    const updatedSummaryConfigs = evaluation.summaryConfigs.map(
+      (summaryConfig: any, index: number) => {
+        const evaluator = evaluation.evaluators[index];
+        const metricId = evaluator.metric._id.toString();
+        const config = configMap.get(metricId);
+
+        if (config) {
+          return {
+            ...summaryConfig,
+            ...(config.weight !== undefined ? { weight: config.weight } : {}),
+            ...(config.calculateType !== undefined ? { calculateType: config.calculateType } : {})
+          };
+        }
+        return summaryConfig;
+      }
+    );
+
+    // Update evaluation configuration
     await MongoEvaluation.updateOne(
       { _id: evalId },
       {
         $set: {
-          evaluators: updatedEvaluators
+          evaluators: updatedEvaluators,
+          summaryConfigs: updatedSummaryConfigs
         }
       }
     );
+
+    // Update threshold values in all related eval_items
+    const thresholdUpdates = metricsConfig.filter((config) => config.thresholdValue !== undefined);
+    if (thresholdUpdates.length > 0) {
+      for (const config of thresholdUpdates) {
+        const updateResult = await MongoEvalItem.updateMany(
+          {
+            evalId: evalId,
+            'evaluator.metric._id': config.metricsId
+          },
+          {
+            $set: {
+              'evaluator.thresholdValue': config.thresholdValue
+            }
+          }
+        );
+
+        addLog.info('[Evaluation] Updated threshold in eval_items', {
+          evalId,
+          metricId: config.metricsId,
+          newThreshold: config.thresholdValue,
+          updatedCount: updateResult.modifiedCount
+        });
+      }
+    }
   }
 
   // Get evaluation summary configuration details
@@ -324,19 +369,19 @@ export class EvaluationSummaryService {
       throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
 
-    // Get calculation type from first evaluator (since all metrics use the same type)
-    const firstEvaluator = evaluation.evaluators?.[0];
-    const calculateType = firstEvaluator?.summaryConfig?.calculateType || CalculateMethodEnum.mean;
-    const calculateTypeName =
-      CaculateMethodMap[calculateType as CalculateMethodEnum]?.name || 'Unknown';
+    // Get calculation type from first summary config (since all metrics use the same type)
+    const firstSummaryConfig = evaluation.summaryConfigs[0];
+    const calculateType = firstSummaryConfig.calculateType;
+    const calculateTypeName = CaculateMethodMap[calculateType]?.name || 'Unknown';
 
     // Build return data, remove calculation type from individual metrics
-    const metricsConfig = (evaluation.evaluators || []).map((evaluator) => {
+    const metricsConfig = evaluation.evaluators.map((evaluator, index) => {
+      const summaryConfig = evaluation.summaryConfigs[index];
       return {
         metricsId: evaluator.metric._id.toString(),
         metricsName: evaluator.metric.name,
         thresholdValue: evaluator.thresholdValue || 0,
-        weight: evaluator.summaryConfig?.weight || 0
+        weight: summaryConfig.weight
       };
     });
 
@@ -638,7 +683,7 @@ export class EvaluationSummaryService {
       { _id: evalId },
       {
         $set: {
-          [`evaluators.${evaluatorIndex}.summaryConfig.summaryStatus`]: status
+          [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
         }
       }
     );
@@ -655,14 +700,14 @@ export class EvaluationSummaryService {
     errorReason?: string
   ): Promise<void> {
     const updateData: any = {
-      [`evaluators.${evaluatorIndex}.summaryConfig.summaryStatus`]: status,
-      [`evaluators.${evaluatorIndex}.summaryConfig.summary`]: summary
+      [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
+      [`summaryConfigs.${evaluatorIndex}.summary`]: summary
     };
 
     if (errorReason) {
-      updateData[`evaluators.${evaluatorIndex}.summaryConfig.errorReason`] = errorReason;
+      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
     } else {
-      updateData[`evaluators.${evaluatorIndex}.summaryConfig.errorReason`] = undefined;
+      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
     }
 
     await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateData });

@@ -60,35 +60,6 @@ export const EvaluationEvaluatorSchema = new Schema(
       type: Number,
       required: false,
       default: 80
-    },
-    summaryConfig: {
-      type: {
-        weight: {
-          type: Number,
-          required: false,
-          default: 0
-        },
-        calculateType: {
-          type: Number,
-          enum: CaculateMethodValues,
-          default: CalculateMethodEnum.mean
-        },
-        summary: {
-          type: String,
-          required: false
-        },
-        summaryStatus: {
-          type: Number,
-          enum: SummaryStatusValues,
-          default: SummaryStatusEnum.pending
-        },
-        errorReason: {
-          type: String,
-          required: false
-        }
-      },
-      required: false,
-      default: {}
     }
   },
   {
@@ -162,7 +133,43 @@ export const EvaluationTaskSchema = new Schema({
       type: Number,
       default: 0
     }
-  }
+  },
+  // Summary configuration for each evaluator (indexed by evaluator index)
+  summaryConfigs: [
+    {
+      metricId: {
+        type: String,
+        required: true
+      },
+      metricName: {
+        type: String,
+        required: true
+      },
+      weight: {
+        type: Number,
+        required: true
+      },
+      calculateType: {
+        type: Number,
+        enum: CaculateMethodValues,
+        required: true
+      },
+      summary: {
+        type: String,
+        default: ''
+      },
+      summaryStatus: {
+        type: Number,
+        enum: SummaryStatusValues,
+        default: SummaryStatusEnum.pending
+      },
+      errorReason: {
+        type: String,
+        default: ''
+      },
+      _id: false
+    }
+  ]
 });
 
 // Optimized indexes for EvaluationTaskSchema

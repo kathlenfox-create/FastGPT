@@ -23,11 +23,13 @@ export interface RuntimeConfig {
 
 // Summary configuration type
 export interface SummaryConfig {
-  weight?: number;
-  calculateType?: CalculateMethodEnum;
-  summary?: string;
-  summaryStatus?: SummaryStatusEnum;
-  errorReason?: string;
+  metricId: string; // Metric ID for mapping relationship
+  metricName: string; // Metric name for display
+  weight: number;
+  calculateType: CalculateMethodEnum;
+  summary: string;
+  summaryStatus: SummaryStatusEnum;
+  errorReason: string;
 }
 
 // Evaluator configuration type
@@ -35,7 +37,6 @@ export interface EvaluatorSchema {
   metric: EvalMetricSchemaType; // Contains complete metric configuration
   runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
   thresholdValue?: number;
-  summaryConfig?: SummaryConfig;
 }
 
 // Statistics information for evaluation task
@@ -55,6 +56,7 @@ export type EvaluationSchemaType = {
   datasetId: string; // Associated dataset
   target: EvalTarget; // Embedded evaluation target
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
+  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
   usageId: string;
   status: EvaluationStatusEnum;
   createTime: Date;

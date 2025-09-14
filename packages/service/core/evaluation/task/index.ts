@@ -126,15 +126,22 @@ export class EvaluationTaskService {
       '[DEBUG] evaluationParams.evaluators before buildEvalDataConfig:',
       JSON.stringify(evaluationParams.evaluators, null, 2)
     );
-    const evaluatorsWithDefaultConfig = buildEvalDataConfig(evaluationParams.evaluators);
+    const { evaluators: cleanedEvaluators, summaryConfigs } = buildEvalDataConfig(
+      evaluationParams.evaluators
+    );
     console.log(
-      '[DEBUG] evaluatorsWithDefaultConfig after buildEvalDataConfig:',
-      JSON.stringify(evaluatorsWithDefaultConfig, null, 2)
+      '[DEBUG] cleanedEvaluators after buildEvalDataConfig:',
+      JSON.stringify(cleanedEvaluators, null, 2)
+    );
+    console.log(
+      '[DEBUG] summaryConfigs after buildEvalDataConfig:',
+      JSON.stringify(summaryConfigs, null, 2)
     );
 
     const dataToCreate = {
       ...evaluationParams,
-      evaluators: evaluatorsWithDefaultConfig,
+      evaluators: cleanedEvaluators,
+      summaryConfigs,
       teamId,
       tmbId,
       usageId: billId,
