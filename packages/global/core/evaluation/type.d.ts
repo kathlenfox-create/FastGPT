@@ -37,6 +37,7 @@ export interface EvaluatorSchema {
   metric: EvalMetricSchemaType; // Contains complete metric configuration
   runtimeConfig: RuntimeConfig; // Runtime configuration including LLM model
   thresholdValue?: number;
+  scoreScaling?: number; // Score scaling factor, default is 100
 }
 
 // Statistics information for evaluation task
@@ -184,7 +185,7 @@ export interface EvaluationItemJobData {
 
 export interface GenerateSummaryParams {
   evalId: string;
-  metricsIds: string[];
+  metricIds: string[];
 }
 
 export interface GenerateSummaryResponse {

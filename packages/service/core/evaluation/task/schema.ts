@@ -60,6 +60,24 @@ export const EvaluationEvaluatorSchema = new Schema(
       type: Number,
       required: false,
       default: 80
+    },
+    scoreScaling: {
+      type: Number,
+      required: false,
+      default: 100, // Default 100x amplification
+      validate: {
+        validator: function (value: number) {
+          return (
+            typeof value === 'number' &&
+            !isNaN(value) &&
+            isFinite(value) &&
+            value > 0 &&
+            value <= 10000
+          ); // Support decimals like 0.01 for reduction
+        },
+        message:
+          'Score scaling must be a positive number greater than 0 and less than or equal to 10000'
+      }
     }
   },
   {

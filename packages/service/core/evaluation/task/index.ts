@@ -121,23 +121,9 @@ export class EvaluationTaskService {
       appName: evaluationParams.name
     });
 
-    // Apply default configuration to evaluators (weights, thresholds, etc.)
-    console.log(
-      '[DEBUG] evaluationParams.evaluators before buildEvalDataConfig:',
-      JSON.stringify(evaluationParams.evaluators, null, 2)
-    );
     const { evaluators: cleanedEvaluators, summaryConfigs } = buildEvalDataConfig(
       evaluationParams.evaluators
     );
-    console.log(
-      '[DEBUG] cleanedEvaluators after buildEvalDataConfig:',
-      JSON.stringify(cleanedEvaluators, null, 2)
-    );
-    console.log(
-      '[DEBUG] summaryConfigs after buildEvalDataConfig:',
-      JSON.stringify(summaryConfigs, null, 2)
-    );
-
     const dataToCreate = {
       ...evaluationParams,
       evaluators: cleanedEvaluators,

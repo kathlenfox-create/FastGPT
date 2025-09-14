@@ -117,6 +117,22 @@ export async function validateEvaluationParams(
           message: EvaluationErrEnum.evalEvaluatorInvalidConfig
         };
       }
+
+      // Validate scoreScaling if provided
+      if (evaluator.scoreScaling !== undefined) {
+        if (
+          typeof evaluator.scoreScaling !== 'number' ||
+          isNaN(evaluator.scoreScaling) ||
+          !isFinite(evaluator.scoreScaling) ||
+          evaluator.scoreScaling <= 0 ||
+          evaluator.scoreScaling > 10000
+        ) {
+          return {
+            success: false,
+            message: EvaluationErrEnum.evalEvaluatorInvalidScoreScaling
+          };
+        }
+      }
     }
   }
 

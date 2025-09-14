@@ -31,9 +31,9 @@ export class EvaluationSummaryService {
   // Get evaluation summary report
   static async getEvaluationSummary(evalId: string): Promise<{
     data: Array<{
-      metricsId: string;
-      metricsName: string;
-      metricsScore: number;
+      metricId: string;
+      metricName: string;
+      metricScore: number;
       summary: string;
       summaryStatus: string;
       errorReason?: string;
@@ -49,21 +49,21 @@ export class EvaluationSummaryService {
       throw new Error(EvaluationErrEnum.evalTaskNotFound);
     }
 
-    // Real-time calculation of metricsScore and aggregateScore
-    const calculatedData = await this.calculateMetricsScores(evaluation);
+    // Real-time calculation of metricScore and aggregateScore
+    const calculatedData = await this.calculateMetricScores(evaluation);
 
     // Build return data, merge calculation results and existing configurations
     const data = evaluation.evaluators.map((evaluator, index) => {
       const metricId = evaluator.metric._id.toString();
       const calculatedMetric = calculatedData.metricsData.find(
-        (item) => item.metricsId === metricId
+        (item) => item.metricId === metricId
       );
       const summaryConfig = evaluation.summaryConfigs[index];
 
       return {
-        metricsId: metricId,
-        metricsName: evaluator.metric.name,
-        metricsScore: calculatedMetric?.metricsScore || 0,
+        metricId: metricId,
+        metricName: evaluator.metric.name,
+        metricScore: calculatedMetric?.metricScore || 0,
         summary: summaryConfig.summary,
         summaryStatus: summaryConfig.summaryStatus.toString(),
         errorReason: summaryConfig.errorReason,
@@ -78,12 +78,12 @@ export class EvaluationSummaryService {
     };
   }
 
-  // Real-time calculation of metricsScore and aggregateScore
-  private static async calculateMetricsScores(evaluation: EvaluationSchemaType): Promise<{
+  // Real-time calculation of metricScore and aggregateScore
+  private static async calculateMetricScores(evaluation: EvaluationSchemaType): Promise<{
     metricsData: Array<{
-      metricsId: string;
-      metricsName: string;
-      metricsScore: number;
+      metricId: string;
+      metricName: string;
+      metricScore: number;
       weight: number;
       thresholdValue: number;
       aboveThresholdCount: number;
@@ -147,9 +147,9 @@ export class EvaluationSummaryService {
 
       // Process results, combine with evaluators configuration
       const metricsData: Array<{
-        metricsId: string;
-        metricsName: string;
-        metricsScore: number;
+        metricId: string;
+        metricName: string;
+        metricScore: number;
         weight: number;
         thresholdValue: number;
         aboveThresholdCount: number;
@@ -168,7 +168,7 @@ export class EvaluationSummaryService {
 
         if (stats) {
           // Select score based on current evaluator's calculation method
-          const metricsScore =
+          const metricScore =
             summaryConfig.calculateType === CalculateMethodEnum.median
               ? Math.round(stats.medianScore * 100) / 100
               : Math.round(stats.avgScore * 100) / 100;
@@ -184,9 +184,9 @@ export class EvaluationSummaryService {
           const weight = summaryConfig.weight;
 
           metricsData.push({
-            metricsId: metricId,
-            metricsName: evaluator.metric.name,
-            metricsScore,
+            metricId: metricId,
+            metricName: evaluator.metric.name,
+            metricScore,
             weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount,
@@ -195,14 +195,14 @@ export class EvaluationSummaryService {
           });
 
           // Accumulate weighted scores
-          totalWeightedScore += metricsScore * weight;
+          totalWeightedScore += metricScore * weight;
           totalWeight += weight;
         } else {
           // Metrics with no data
           metricsData.push({
-            metricsId: metricId,
-            metricsName: evaluator.metric.name,
-            metricsScore: 0,
+            metricId: metricId,
+            metricName: evaluator.metric.name,
+            metricScore: 0,
             weight: summaryConfig.weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
@@ -236,9 +236,9 @@ export class EvaluationSummaryService {
       const defaultData = evaluation.evaluators.map((evaluator, index) => {
         const summaryConfig = evaluation.summaryConfigs[index];
         return {
-          metricsId: evaluator.metric._id.toString(),
-          metricsName: evaluator.metric.name,
-          metricsScore: 0,
+          metricId: evaluator.metric._id.toString(),
+          metricName: evaluator.metric.name,
+          metricScore: 0,
           weight: summaryConfig.weight,
           thresholdValue: evaluator.thresholdValue || 0,
           aboveThresholdCount: 0,
@@ -258,7 +258,7 @@ export class EvaluationSummaryService {
   static async updateEvaluationSummaryConfig(
     evalId: string,
     metricsConfig: Array<{
-      metricsId: string;
+      metricId: string;
       thresholdValue: number;
       weight?: number;
       calculateType?: CalculateMethodEnum;
@@ -271,7 +271,7 @@ export class EvaluationSummaryService {
       (evaluation.evaluators || []).map((evaluator: any) => evaluator.metric._id.toString())
     );
     for (const m of metricsConfig) {
-      if (!evalMetricIdSet.has(m.metricsId)) {
+      if (!evalMetricIdSet.has(m.metricId)) {
         throw new Error(EvaluationErrEnum.summaryMetricsConfigError);
       }
     }
@@ -279,7 +279,7 @@ export class EvaluationSummaryService {
     // Update configuration based on existing evaluators (threshold, weight, calculation method)
     const configMap = new Map(
       metricsConfig.map((m) => [
-        m.metricsId,
+        m.metricId,
         { thresholdValue: m.thresholdValue, weight: m.weight, calculateType: m.calculateType }
       ])
     );
@@ -333,7 +333,7 @@ export class EvaluationSummaryService {
         const updateResult = await MongoEvalItem.updateMany(
           {
             evalId: evalId,
-            'evaluator.metric._id': config.metricsId
+            'evaluator.metric._id': config.metricId
           },
           {
             $set: {
@@ -344,7 +344,7 @@ export class EvaluationSummaryService {
 
         addLog.info('[Evaluation] Updated threshold in eval_items', {
           evalId,
-          metricId: config.metricsId,
+          metricId: config.metricId,
           newThreshold: config.thresholdValue,
           updatedCount: updateResult.modifiedCount
         });
@@ -357,8 +357,8 @@ export class EvaluationSummaryService {
     calculateType: CalculateMethodEnum;
     calculateTypeName: string;
     metricsConfig: Array<{
-      metricsId: string;
-      metricsName: string;
+      metricId: string;
+      metricName: string;
       thresholdValue: number;
       weight: number;
     }>;
@@ -379,8 +379,8 @@ export class EvaluationSummaryService {
     const metricsConfig = evaluation.evaluators.map((evaluator, index) => {
       const summaryConfig = evaluation.summaryConfigs[index];
       return {
-        metricsId: evaluator.metric._id.toString(),
-        metricsName: evaluator.metric.name,
+        metricId: evaluator.metric._id.toString(),
+        metricName: evaluator.metric.name,
         thresholdValue: evaluator.thresholdValue || 0,
         weight: summaryConfig.weight
       };
@@ -416,7 +416,7 @@ export class EvaluationSummaryService {
   /**
    * 生成多个指标的总结报告 - 异步触发，立即返回
    */
-  static async generateSummaryReports(evalId: string, metricsIds: string[]): Promise<void> {
+  static async generateSummaryReports(evalId: string, metricIds: string[]): Promise<void> {
     try {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
 
@@ -428,8 +428,8 @@ export class EvaluationSummaryService {
         '[EvaluationSummary] Starting validation and preparation of report generation tasks',
         {
           evalId,
-          metricsIds,
-          totalMetrics: metricsIds.length
+          metricIds,
+          totalMetrics: metricIds.length
         }
       );
 
@@ -446,7 +446,7 @@ export class EvaluationSummaryService {
         reason: string;
       }> = [];
 
-      metricsIds.forEach((metricId) => {
+      metricIds.forEach((metricId) => {
         const evaluatorIndex = evaluation.evaluators.findIndex(
           (evaluator: any) => evaluator.metric._id.toString() === metricId
         );
@@ -506,7 +506,7 @@ export class EvaluationSummaryService {
         if (skippedMetrics.length > 0) {
           addLog.info('[EvaluationSummary] All metrics were skipped, no tasks to execute', {
             evalId,
-            totalRequested: metricsIds.length,
+            totalRequested: metricIds.length,
             skippedCount: skippedMetrics.length
           });
           return; // 如果所有指标都被跳过，直接返回而不抛出错误
@@ -525,7 +525,7 @@ export class EvaluationSummaryService {
 
       addLog.info('[EvaluationSummary] Status updated to generating, starting async processing', {
         evalId,
-        totalRequested: metricsIds.length,
+        totalRequested: metricIds.length,
         validMetricsCount: evaluatorTasks.length,
         skippedCount: skippedMetrics.length,
         validMetrics: evaluatorTasks.map((task) => ({
@@ -541,7 +541,7 @@ export class EvaluationSummaryService {
     } catch (error) {
       addLog.error('[EvaluationSummary] Report generation task creation failed', {
         evalId,
-        metricsIds,
+        metricIds,
         error
       });
       throw error;

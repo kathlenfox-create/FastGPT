@@ -33,14 +33,17 @@ export abstract class Evaluator {
 
 export class DitingEvaluator extends Evaluator {
   private client: ReturnType<typeof createDitingClient>;
+  private scoreScaling: number;
 
   constructor(
     metricConfig: MetricConfig,
     llmConfig?: EvalModelConfigType,
-    embeddingConfig?: EvalModelConfigType
+    embeddingConfig?: EvalModelConfigType,
+    scoreScaling: number = 100
   ) {
     super(metricConfig, llmConfig, embeddingConfig);
     this.client = createDitingClient();
+    this.scoreScaling = scoreScaling;
   }
 
   async evaluate(evalCase: EvalCase): Promise<MetricResult> {
@@ -76,10 +79,20 @@ export class DitingEvaluator extends Evaluator {
       }
     }
 
+    // Apply score scaling if data.score exists
+    // scoreScaling directly multiplies the original score (e.g., 100 means 100x amplification)
+    let scaledData = response.data;
+    if (response.data?.score !== undefined && response.data?.score !== null) {
+      scaledData = {
+        ...response.data,
+        score: response.data.score * this.scoreScaling
+      };
+    }
+
     return {
       metricName: this.metricConfig.metricName,
       status: response.status,
-      data: response.data,
+      data: scaledData,
       usages: response.usages,
       error: response.error,
       totalPoints
@@ -131,5 +144,6 @@ export function createEvaluatorInstance(evaluatorConfig: EvaluatorSchema): Evalu
     }
   }
 
-  return new DitingEvaluator(metricConfig, llmConfig, embeddingConfig);
+  const scoreScaling = evaluatorConfig.scoreScaling ?? 100;
+  return new DitingEvaluator(metricConfig, llmConfig, embeddingConfig, scoreScaling);
 }
