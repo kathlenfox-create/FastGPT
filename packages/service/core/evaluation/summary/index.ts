@@ -102,17 +102,17 @@ export class EvaluationSummaryService {
           $match: {
             evalId: evalId,
             status: EvalStatus.completed,
-            'evaluator_output.data.score': { $exists: true, $ne: null }
+            'evaluatorOutput.data.score': { $exists: true, $ne: null }
           }
         },
         // Step 2: Group by metric ID and calculate statistics
         {
           $group: {
-            _id: '$evaluator_output.metricId',
-            scores: { $push: '$evaluator_output.data.score' },
-            avgScore: { $avg: '$evaluator_output.data.score' },
+            _id: '$evaluatorOutput.metricName',
+            scores: { $push: '$evaluatorOutput.data.score' },
+            avgScore: { $avg: '$evaluatorOutput.data.score' },
             count: { $sum: 1 },
-            metricName: { $first: '$evaluator_output.metricName' }
+            metricName: { $first: '$evaluatorOutput.metricName' }
           }
         }
       ];
@@ -162,7 +162,8 @@ export class EvaluationSummaryService {
 
       evaluation.evaluators.forEach((evaluator, index) => {
         const metricId = evaluator.metric._id.toString();
-        const stats = processedStats.find((s) => s._id === metricId);
+        const metricName = evaluator.metric.name;
+        const stats = processedStats.find((s) => s._id === metricName);
         const summaryConfig = evaluation.summaryConfigs[index];
 
         if (stats) {
@@ -271,7 +272,7 @@ export class EvaluationSummaryService {
     );
     for (const m of metricsConfig) {
       if (!evalMetricIdSet.has(m.metricsId)) {
-        throw new Error(EvaluationErrEnum.evalMetricIdRequired);
+        throw new Error(EvaluationErrEnum.summaryMetricsConfigError);
       }
     }
 
@@ -439,6 +440,12 @@ export class EvaluationSummaryService {
         evaluator: any;
       }> = [];
 
+      const skippedMetrics: Array<{
+        metricId: string;
+        metricName: string;
+        reason: string;
+      }> = [];
+
       metricsIds.forEach((metricId) => {
         const evaluatorIndex = evaluation.evaluators.findIndex(
           (evaluator: any) => evaluator.metric._id.toString() === metricId
@@ -448,6 +455,29 @@ export class EvaluationSummaryService {
           addLog.warn('[EvaluationSummary] Metric does not belong to this evaluation task', {
             evalId,
             metricId
+          });
+          skippedMetrics.push({
+            metricId,
+            metricName: 'Unknown',
+            reason: 'Metric does not belong to this evaluation task'
+          });
+          return;
+        }
+
+        // 检查该指标是否已经在生成中
+        const summaryConfig = evaluation.summaryConfigs[evaluatorIndex];
+        if (summaryConfig.summaryStatus === SummaryStatusEnum.generating) {
+          const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
+          addLog.info('[EvaluationSummary] Metric is already generating, skipping', {
+            evalId,
+            metricId,
+            metricName,
+            currentStatus: summaryConfig.summaryStatus
+          });
+          skippedMetrics.push({
+            metricId,
+            metricName,
+            reason: 'Already generating'
           });
           return;
         }
@@ -459,19 +489,49 @@ export class EvaluationSummaryService {
         });
       });
 
+      // 记录跳过的指标信息
+      if (skippedMetrics.length > 0) {
+        addLog.info('[EvaluationSummary] Some metrics were skipped', {
+          evalId,
+          skippedCount: skippedMetrics.length,
+          skippedMetrics: skippedMetrics.map((m) => ({
+            metricId: m.metricId,
+            metricName: m.metricName,
+            reason: m.reason
+          }))
+        });
+      }
+
       if (evaluatorTasks.length === 0) {
+        if (skippedMetrics.length > 0) {
+          addLog.info('[EvaluationSummary] All metrics were skipped, no tasks to execute', {
+            evalId,
+            totalRequested: metricsIds.length,
+            skippedCount: skippedMetrics.length
+          });
+          return; // 如果所有指标都被跳过，直接返回而不抛出错误
+        }
         throw new Error(EvaluationErrEnum.summaryNoValidMetricsFound);
       }
 
-      // Immediately update all related evaluator status to generating
-      const updatePromises = evaluatorTasks.map((task) =>
-        this.updateSummaryStatus(evalId, task.evaluatorIndex, SummaryStatusEnum.generating)
-      );
-      await Promise.all(updatePromises);
+      // Immediately update all related evaluator status to generating (batch update)
+      const updateFields: Record<string, any> = {};
+      evaluatorTasks.forEach((task) => {
+        updateFields[`summaryConfigs.${task.evaluatorIndex}.summaryStatus`] =
+          SummaryStatusEnum.generating;
+      });
+
+      await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateFields });
 
       addLog.info('[EvaluationSummary] Status updated to generating, starting async processing', {
         evalId,
-        validMetricsCount: evaluatorTasks.length
+        totalRequested: metricsIds.length,
+        validMetricsCount: evaluatorTasks.length,
+        skippedCount: skippedMetrics.length,
+        validMetrics: evaluatorTasks.map((task) => ({
+          metricId: task.metricId,
+          metricName: task.evaluator.metric.name
+        }))
       });
 
       // Execute report generation asynchronously, don't wait for results
@@ -571,7 +631,7 @@ export class EvaluationSummaryService {
         await this.updateSummaryResult(
           evalId,
           evaluatorIndex,
-          SummaryStatusEnum.completed,
+          SummaryStatusEnum.failed,
           'No matching evaluation data found, cannot generate summary report'
         );
         return;
@@ -724,26 +784,33 @@ export class EvaluationSummaryService {
     filteredData: any[];
     totalDataCount: number;
   }> {
+    addLog.debug('[getFilteredEvaluationData] 入参:', {
+      evalId,
+      metricId,
+      thresholdValue
+    });
+
     try {
       // Process evalId, ensure correct ObjectId format
       const evalObjectId =
         typeof evalId === 'string' && evalId.length === 24 ? new Types.ObjectId(evalId) : evalId;
 
-      // Query successfully completed evaluation items, sorted by score (low priority)
+      // Query successfully completed evaluation items for specific metric, sorted by score (low priority)
+      // Note: evaluator.metric._id is stored as string, not ObjectId
       const pipeline = [
         {
           $match: {
             evalId: evalObjectId,
-            'evaluator_output.metricId': metricId,
-            status: EvalStatus.completed,
-            'evaluator_output.data.score': { $exists: true, $ne: null }
+            'evaluator.metric._id': metricId,
+            'evaluatorOutput.data.score': { $exists: true, $ne: null },
+            status: EvalStatus.completed
           }
         },
         {
           $addFields: {
-            score: '$evaluator_output.data.score',
+            score: '$evaluatorOutput.data.score',
             isBelowThreshold: {
-              $lt: ['$evaluator_output.data.score', thresholdValue]
+              $lt: ['$evaluatorOutput.data.score', thresholdValue]
             }
           }
         },
@@ -756,8 +823,8 @@ export class EvaluationSummaryService {
         {
           $project: {
             dataItem: 1,
-            target_output: 1,
-            evaluator_output: 1,
+            targetOutput: 1,
+            evaluatorOutput: 1,
             score: 1,
             isBelowThreshold: 1
           }
@@ -1013,17 +1080,14 @@ export class EvaluationSummaryService {
    * 格式化数据项用于提示词
    */
   private static formatDataItemForPrompt(item: any): string {
-    const score = item.evaluator_output?.data?.score || 0;
-    const userInput = item.dataItem?.userInput || '无';
-    const expectedOutput = item.dataItem?.expectedOutput || '无';
-    const actualOutput = item.target_output?.actualOutput || '无';
-    const details = item.evaluator_output?.details || {};
+    // const score = item.evaluatorOutput?.data?.score || 0;
+    // const userInput = item.dataItem?.userInput || '无';
+    // const expectedOutput = item.dataItem?.expectedOutput || '无';
+    // const actualOutput = item.targetOutput?.actualOutput || '无';
+    const reason = item.evaluatorOutput?.data?.reason || '无评估原因';
 
-    return `**得分**: ${score}
-**用户输入**: ${userInput}
-**期望输出**: ${expectedOutput}  
-**实际输出**: ${actualOutput}
-**详细信息**: ${JSON.stringify(details, null, 2)}`;
+    return `
+**评估原因**: ${reason}`;
   }
 
   /**
@@ -1031,7 +1095,7 @@ export class EvaluationSummaryService {
    */
   private static isAllPerfectScores(data: any[]): boolean {
     if (data.length === 0) return false;
-    return data.every((item) => (item.evaluator_output?.data?.score || 0) >= PERFECT_SCORE);
+    return data.every((item) => (item.evaluatorOutput?.data?.score || 0) >= PERFECT_SCORE);
   }
 
   /**
@@ -1064,7 +1128,7 @@ export class EvaluationSummaryService {
     } else {
       // When non-perfect scores exist, prioritize non-perfect score data
       const nonPerfectData = data.filter(
-        (item) => (item.evaluator_output?.data?.score || 0) < PERFECT_SCORE
+        (item) => (item.evaluatorOutput?.data?.score || 0) < PERFECT_SCORE
       );
       // Return non-perfect score data first (sorted by score from low to high)
       return [...nonPerfectData];

@@ -24,6 +24,18 @@ async function handler(
       return Promise.reject(EvaluationErrEnum.summaryMetricsConfigError);
     }
 
+    // Deduplicate metricsIds to avoid duplicate processing
+    const uniqueMetricsIds = [...new Set(metricsIds)];
+
+    if (uniqueMetricsIds.length !== metricsIds.length) {
+      addLog.info('[EvaluationSummary] Removed duplicate metricsIds in API layer', {
+        evalId,
+        originalCount: metricsIds.length,
+        uniqueCount: uniqueMetricsIds.length,
+        duplicates: metricsIds.filter((id, index) => metricsIds.indexOf(id) !== index)
+      });
+    }
+
     const { teamId, tmbId, evaluation } = await authEvaluationTaskWrite(evalId, {
       req,
       authApiKey: true,
@@ -35,12 +47,12 @@ async function handler(
 
     addLog.info('[EvaluationSummary] Starting summary report generation', {
       evalId,
-      metricsIds,
-      metricsCount: metricsIds.length
+      metricsIds: uniqueMetricsIds,
+      metricsCount: uniqueMetricsIds.length
     });
 
     // Generate summary report asynchronously
-    await EvaluationSummaryService.generateSummaryReports(evalId, metricsIds);
+    await EvaluationSummaryService.generateSummaryReports(evalId, uniqueMetricsIds);
 
     const response: GenerateSummaryResponse = {
       success: true,

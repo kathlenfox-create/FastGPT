@@ -142,6 +142,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: []
       }
     } as any;
@@ -154,6 +155,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: 'invalid'
       }
     } as any;
@@ -166,6 +168,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           {
             thresholdValue: 0.8
@@ -182,6 +185,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           {
             metricsId: '',
@@ -199,6 +203,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           {
             metricsId: 'metric-1',
@@ -216,6 +221,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           {
             metricsId: 'metric-1',
@@ -228,20 +234,20 @@ describe('Update Evaluation Summary Config API Handler', () => {
     await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryThresholdMustBeNumber);
   });
 
-  test('应该拒绝 3 个或以上指标时缺少权重的配置', async () => {
+  test('应该拒绝 2 个或以上指标时缺少权重的配置', async () => {
     const mockReq = {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           { metricsId: 'metric-1', thresholdValue: 0.8 },
-          { metricsId: 'metric-2', thresholdValue: 0.7 },
-          { metricsId: 'metric-3', thresholdValue: 0.9 }
+          { metricsId: 'metric-2', thresholdValue: 0.7 }
         ]
       }
     } as any;
 
-    await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryWeightMustBeNumber);
+    await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryWeightRequired);
   });
 
   test('应该拒绝权重不是数字的配置', async () => {
@@ -249,6 +255,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           { metricsId: 'metric-1', thresholdValue: 0.8, weight: 50 },
           { metricsId: 'metric-2', thresholdValue: 0.7, weight: 'invalid' }
@@ -264,6 +271,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           { metricsId: 'metric-1', thresholdValue: 0.8, weight: 60 },
           { metricsId: 'metric-2', thresholdValue: 0.7, weight: 30 }
@@ -279,6 +287,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           { metricsId: 'metric-1', thresholdValue: 0.8, weight: 70 },
           { metricsId: 'metric-2', thresholdValue: 0.7, weight: 30 }
@@ -295,6 +304,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [
           { metricsId: 'metric-1', thresholdValue: 0.8, weight: 50 },
           { metricsId: 'metric-2', thresholdValue: 0.7 } // 缺少权重
@@ -302,18 +312,16 @@ describe('Update Evaluation Summary Config API Handler', () => {
       }
     } as any;
 
-    await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryWeightMustBeNumber);
+    await expect(handler(mockReq)).rejects.toBe(EvaluationErrEnum.summaryWeightRequired);
   });
 
-  test('应该接受不提供权重的配置', async () => {
+  test('应该接受不提供权重的单个指标配置', async () => {
     const mockReq = {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
-        metricsConfig: [
-          { metricsId: 'metric-1', thresholdValue: 0.8 },
-          { metricsId: 'metric-2', thresholdValue: 0.7 }
-        ]
+        calculateType: CalculateMethodEnum.mean,
+        metricsConfig: [{ metricsId: 'metric-1', thresholdValue: 0.8 }]
       }
     } as any;
 
@@ -328,6 +336,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [{ metricsId: 'metric-1', thresholdValue: 0.8 }]
       }
     } as any;
@@ -352,6 +361,7 @@ describe('Update Evaluation Summary Config API Handler', () => {
       method: 'PUT',
       body: {
         evalId: mockEvalId,
+        calculateType: CalculateMethodEnum.mean,
         metricsConfig: [{ metricsId: 'metric-1', thresholdValue: 0.8 }]
       }
     } as any;
