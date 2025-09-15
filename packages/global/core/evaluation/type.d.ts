@@ -100,6 +100,9 @@ export type EvaluationDataItemType = EvalDatasetDataSchemaType & {
 export type EvaluationItemSchemaType = {
   _id: string;
   evalId: string;
+  // Chat information for linking to detailed responses (set after target execution)
+  chatId?: string;
+  aiChatItemDataId?: string;
   // Dependent component configurations
   dataItem: EvaluationDataItemType;
   target: EvalTarget;
@@ -125,6 +128,8 @@ export interface TargetOutput {
   [EvalDatasetDataKeyEnum.RetrievalContext]?: string[];
   usage?: any;
   responseTime: number;
+  chatId: string;
+  aiChatItemDataId: string;
 }
 
 // ===== Display Types =====
