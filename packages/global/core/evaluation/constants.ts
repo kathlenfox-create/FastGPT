@@ -51,8 +51,8 @@ export const SummaryStatusValues = Object.values(SummaryStatusEnum);
 
 // Calculation method enumeration
 export enum CalculateMethodEnum {
-  mean = 0,
-  median = 1
+  mean = 'mean',
+  median = 'median'
 }
 
 export const CaculateMethodMap = {
@@ -64,7 +64,7 @@ export const CaculateMethodMap = {
   }
 };
 
-export const CaculateMethodValues = Object.keys(CaculateMethodMap).map(Number);
+export const CaculateMethodValues = Object.values(CalculateMethodEnum);
 
 // Score constants
 export const PERFECT_SCORE = 100;
