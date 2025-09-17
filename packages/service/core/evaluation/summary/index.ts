@@ -148,22 +148,32 @@ export class EvaluationSummaryService {
 
       // MongoDB aggregation pipeline - compatible with older MongoDB versions
       const pipeline = [
-        // Step 1: Filter successful evaluation items
+        // Step 1: Filter successful evaluation items that have evaluator outputs
         {
           $match: {
             evalId: evalId,
             status: EvalStatus.completed,
-            'evaluatorOutput.data.score': { $exists: true, $ne: null }
+            evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },
-        // Step 2: Group by metric ID and calculate statistics
+        // Step 2: Unwind the evaluatorOutputs array to process each metric result separately
+        {
+          $unwind: '$evaluatorOutputs'
+        },
+        // Step 3: Filter only results with valid scores
+        {
+          $match: {
+            'evaluatorOutputs.data.score': { $exists: true, $ne: null }
+          }
+        },
+        // Step 4: Group by metric name and calculate statistics
         {
           $group: {
-            _id: '$evaluatorOutput.metricName',
-            scores: { $push: '$evaluatorOutput.data.score' },
-            avgScore: { $avg: '$evaluatorOutput.data.score' },
+            _id: '$evaluatorOutputs.metricName',
+            scores: { $push: '$evaluatorOutputs.data.score' },
+            avgScore: { $avg: '$evaluatorOutputs.data.score' },
             count: { $sum: 1 },
-            metricName: { $first: '$evaluatorOutput.metricName' }
+            metricName: { $first: '$evaluatorOutputs.metricName' }
           }
         }
       ];
@@ -932,16 +942,37 @@ export class EvaluationSummaryService {
         {
           $match: {
             evalId: evalObjectId,
-            'evaluator.metric._id': metricId,
-            'evaluatorOutput.data.score': { $exists: true, $ne: null },
-            status: EvalStatus.completed
+            status: EvalStatus.completed,
+            evaluatorOutputs: { $exists: true, $nin: [null, []] }
           }
         },
         {
           $addFields: {
-            score: '$evaluatorOutput.data.score',
+            // Find the matching metric result in evaluatorOutputs array
+            matchingMetricResult: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$evaluatorOutputs',
+                    as: 'output',
+                    cond: { $eq: ['$$output.metricName', metricId] }
+                  }
+                },
+                0
+              ]
+            }
+          }
+        },
+        {
+          $match: {
+            'matchingMetricResult.data.score': { $exists: true, $ne: null }
+          }
+        },
+        {
+          $addFields: {
+            score: '$matchingMetricResult.data.score',
             isBelowThreshold: {
-              $lt: ['$evaluatorOutput.data.score', thresholdValue]
+              $lt: ['$matchingMetricResult.data.score', thresholdValue]
             }
           }
         },
@@ -955,7 +986,8 @@ export class EvaluationSummaryService {
           $project: {
             dataItem: 1,
             targetOutput: 1,
-            evaluatorOutput: 1,
+            evaluatorOutputs: 1,
+            matchingMetricResult: 1,
             score: 1,
             isBelowThreshold: 1
           }
@@ -1211,11 +1243,11 @@ export class EvaluationSummaryService {
    * 格式化数据项用于提示词
    */
   private static formatDataItemForPrompt(item: any): string {
-    // const score = item.evaluatorOutput?.data?.score || 0;
+    // const score = item.matchingMetricResult?.data?.score || 0;
     // const userInput = item.dataItem?.userInput || '无';
     // const expectedOutput = item.dataItem?.expectedOutput || '无';
     // const actualOutput = item.targetOutput?.actualOutput || '无';
-    const reason = item.evaluatorOutput?.data?.reason || '无评估原因';
+    const reason = item.matchingMetricResult?.data?.reason || '无评估原因';
 
     return `
 **评估原因**: ${reason}`;
@@ -1226,7 +1258,7 @@ export class EvaluationSummaryService {
    */
   private static isAllPerfectScores(data: any[]): boolean {
     if (data.length === 0) return false;
-    return data.every((item) => (item.evaluatorOutput?.data?.score || 0) >= PERFECT_SCORE);
+    return data.every((item) => (item.matchingMetricResult?.data?.score || 0) >= PERFECT_SCORE);
   }
 
   /**
@@ -1259,7 +1291,7 @@ export class EvaluationSummaryService {
     } else {
       // When non-perfect scores exist, prioritize non-perfect score data
       const nonPerfectData = data.filter(
-        (item) => (item.evaluatorOutput?.data?.score || 0) < PERFECT_SCORE
+        (item) => (item.matchingMetricResult?.data?.score || 0) < PERFECT_SCORE
       );
       // Return non-perfect score data first (sorted by score from low to high)
       return [...nonPerfectData];
