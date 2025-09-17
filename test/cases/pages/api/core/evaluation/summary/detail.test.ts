@@ -57,7 +57,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 85.0,
           summary: '整体表现良好，在大部分测试用例中都能提供准确的回答。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 85
         },
@@ -66,7 +66,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '相关性',
           metricScore: 78.7,
           summary: '回答与问题的相关性较好，但在某些复杂场景下需要改进。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 72
         }
@@ -150,7 +150,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '流畅性',
           metricScore: 92.3,
           summary: '生成的文本流畅自然，语法错误极少。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 50,
           overThresholdItemCount: 47
         }
@@ -180,7 +180,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 85.5,
           summary: '评估完成，表现良好。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 85
         },
@@ -189,7 +189,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '相关性',
           metricScore: 0,
           summary: '',
-          summaryStatus: SummaryStatusEnum.failed.toString(),
+          summaryStatus: SummaryStatusEnum.failed,
           errorReason: 'AI 服务超时',
           completedItemCount: 0,
           overThresholdItemCount: 0
@@ -208,7 +208,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
     const result = await handler(mockReq);
 
     expect(result.data).toHaveLength(2);
-    expect(result.data[1].summaryStatus).toBe(SummaryStatusEnum.failed.toString());
+    expect(result.data[1].summaryStatus).toBe(SummaryStatusEnum.failed);
     expect(result.data[1].errorReason).toBe('AI 服务超时');
   });
 
@@ -220,7 +220,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 85.5,
           summary: '',
-          summaryStatus: SummaryStatusEnum.generating.toString(),
+          summaryStatus: SummaryStatusEnum.generating,
           completedItemCount: 100,
           overThresholdItemCount: 85
         }
@@ -237,7 +237,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
 
     const result = await handler(mockReq);
 
-    expect(result.data[0].summaryStatus).toBe(SummaryStatusEnum.generating.toString());
+    expect(result.data[0].summaryStatus).toBe(SummaryStatusEnum.generating);
     expect(result.data[0].summary).toBe('');
   });
 
@@ -275,7 +275,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 85.5,
           summary: '测试总结',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 85
         }
@@ -335,7 +335,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 0,
           summary: '评估结果显示准确性较低，需要改进。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 0
         }
@@ -365,7 +365,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 98.7,
           summary: '评估结果优秀，准确性极高。',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 99
         }
@@ -395,7 +395,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '准确性',
           metricScore: 85.5,
           summary: '准确性良好',
-          summaryStatus: SummaryStatusEnum.completed.toString(),
+          summaryStatus: SummaryStatusEnum.completed,
           completedItemCount: 100,
           overThresholdItemCount: 85
         },
@@ -404,7 +404,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '相关性',
           metricScore: 0,
           summary: '',
-          summaryStatus: SummaryStatusEnum.generating.toString(),
+          summaryStatus: SummaryStatusEnum.generating,
           completedItemCount: 0,
           overThresholdItemCount: 0
         },
@@ -413,7 +413,7 @@ describe('Get Evaluation Summary Detail API Handler', () => {
           metricName: '流畅性',
           metricScore: 0,
           summary: '',
-          summaryStatus: SummaryStatusEnum.failed.toString(),
+          summaryStatus: SummaryStatusEnum.failed,
           errorReason: 'Token 不足',
           completedItemCount: 50,
           overThresholdItemCount: 0
@@ -432,9 +432,9 @@ describe('Get Evaluation Summary Detail API Handler', () => {
     const result = await handler(mockReq);
 
     expect(result.data).toHaveLength(3);
-    expect(result.data[0].summaryStatus).toBe(SummaryStatusEnum.completed.toString());
-    expect(result.data[1].summaryStatus).toBe(SummaryStatusEnum.generating.toString());
-    expect(result.data[2].summaryStatus).toBe(SummaryStatusEnum.failed.toString());
+    expect(result.data[0].summaryStatus).toBe(SummaryStatusEnum.completed);
+    expect(result.data[1].summaryStatus).toBe(SummaryStatusEnum.generating);
+    expect(result.data[2].summaryStatus).toBe(SummaryStatusEnum.failed);
     expect(result.data[2].errorReason).toBe('Token 不足');
   });
 });

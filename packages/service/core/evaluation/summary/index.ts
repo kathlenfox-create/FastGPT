@@ -65,7 +65,7 @@ export class EvaluationSummaryService {
         metricName: evaluator.metric.name,
         metricScore: summaryConfig.score || 0, // Use pre-calculated score from MongoDB
         summary: summaryConfig.summary,
-        summaryStatus: summaryConfig.summaryStatus.toString(),
+        summaryStatus: summaryConfig.summaryStatus,
         errorReason: summaryConfig.errorReason,
         completedItemCount: completedItemCount, // Use pre-calculated count from MongoDB
         overThresholdItemCount: overThresholdItemCount, // Use pre-calculated count from MongoDB

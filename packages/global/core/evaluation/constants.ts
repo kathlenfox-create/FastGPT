@@ -26,10 +26,10 @@ export const EvaluationStatusMap = {
 export const EvaluationStatusValues = Object.keys(EvaluationStatusMap).map(Number);
 
 export enum SummaryStatusEnum {
-  pending = 0,
-  generating = 1,
-  completed = 2,
-  failed = 3
+  pending = 'pending',
+  generating = 'generating',
+  completed = 'completed',
+  failed = 'failed'
 }
 
 export const SummaryStatusMap = {
@@ -47,7 +47,7 @@ export const SummaryStatusMap = {
   }
 };
 
-export const SummaryStatusValues = Object.keys(SummaryStatusMap).map(Number);
+export const SummaryStatusValues = Object.values(SummaryStatusEnum);
 
 // Calculation method enumeration
 export enum CalculateMethodEnum {

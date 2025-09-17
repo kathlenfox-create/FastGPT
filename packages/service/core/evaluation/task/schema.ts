@@ -186,7 +186,7 @@ export const EvaluationTaskSchema = new Schema({
         default: ''
       },
       summaryStatus: {
-        type: Number,
+        type: String,
         enum: SummaryStatusValues,
         default: SummaryStatusEnum.pending
       },
