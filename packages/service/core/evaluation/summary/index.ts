@@ -37,6 +37,7 @@ import { recalculateAllEvaluationItemAggregateScores } from './util/aggregateSco
 import { addSummaryTaskToQueue } from './queue';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { ClientSession } from '../../../common/mongo';
+import { readWriteLock } from '../../../common/redis/distributedLock';
 
 export class EvaluationSummaryService {
   // Get evaluation summary report
@@ -116,33 +117,97 @@ export class EvaluationSummaryService {
   }
 
   // Calculate and save metric scores to MongoDB summaryConfigs
-  static async calculateAndSaveMetricScores(evalId: string): Promise<void> {
-    try {
-      const evaluation = await MongoEvaluation.findById(evalId).lean();
-      if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
+  static async calculateAndSaveMetricScores(
+    evalId: string,
+    hasConfigLock?: boolean
+  ): Promise<void> {
+    // 如果调用者已经持有配置锁，直接执行
+    if (hasConfigLock) {
+      try {
+        addLog.info('[Evaluation] Starting metric scores calculation with existing lock', {
+          evalId
+        });
 
-      // Use the existing calculateMetricScores method to get calculated scores
-      const calculatedData = await this.calculateMetricScores(evaluation);
+        const evaluation = await MongoEvaluation.findById(evalId).lean();
+        if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-      // Update the calculated scores to database
-      await this.updateSummaryConfigsScores(
-        evalId,
-        calculatedData.metricsData,
-        calculatedData.aggregateScore
-      );
+        // Use the existing calculateMetricScores method to get calculated scores
+        const calculatedData = await this.calculateMetricScores(evaluation);
 
-      addLog.info('[Evaluation] Metric scores calculated and saved to MongoDB', {
-        evalId,
-        metricsCount: calculatedData.metricsData.length,
-        aggregateScore: calculatedData.aggregateScore
-      });
-    } catch (error) {
-      addLog.error('[Evaluation] Failed to calculate and save metric scores', {
-        evalId,
-        error
-      });
-      // Don't throw error to avoid affecting main flow
+        // Update the calculated scores to database
+        await this.updateSummaryConfigsScores(
+          evalId,
+          calculatedData.metricsData,
+          calculatedData.aggregateScore
+        );
+
+        addLog.info(
+          '[Evaluation] Metric scores calculated and saved to MongoDB with existing lock',
+          {
+            evalId,
+            metricsCount: calculatedData.metricsData.length,
+            aggregateScore: calculatedData.aggregateScore
+          }
+        );
+      } catch (error) {
+        addLog.error('[Evaluation] Failed to calculate and save metric scores with existing lock', {
+          evalId,
+          error
+        });
+        // Don't throw error to avoid affecting main flow
+      }
+      return;
     }
+
+    // 否则申请写锁（需要计算并保存数据到数据库）
+    const lockKey = `evaluation_config:${evalId}`;
+    return await readWriteLock.withWriteLock(
+      lockKey,
+      async () => {
+        try {
+          addLog.info('[Evaluation] Starting metric scores calculation with acquired write lock', {
+            evalId,
+            lockKey
+          });
+
+          const evaluation = await MongoEvaluation.findById(evalId).lean();
+          if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
+
+          // Use the existing calculateMetricScores method to get calculated scores
+          const calculatedData = await this.calculateMetricScores(evaluation);
+
+          // Update the calculated scores to database
+          await this.updateSummaryConfigsScores(
+            evalId,
+            calculatedData.metricsData,
+            calculatedData.aggregateScore
+          );
+
+          addLog.info(
+            '[Evaluation] Metric scores calculated and saved to MongoDB with acquired write lock',
+            {
+              evalId,
+              lockKey,
+              metricsCount: calculatedData.metricsData.length,
+              aggregateScore: calculatedData.aggregateScore
+            }
+          );
+        } catch (error) {
+          addLog.error(
+            '[Evaluation] Failed to calculate and save metric scores with acquired write lock',
+            {
+              evalId,
+              lockKey,
+              error
+            }
+          );
+          // Don't throw error to avoid affecting main flow
+        }
+      },
+      30, // 30秒超时，指标计算通常较快
+      15, // 最多重试15次
+      200 // 每次重试间隔200ms
+    );
   }
 
   // Real-time calculation of metricScore and aggregateScore (pure calculation, no database updates)
@@ -394,20 +459,44 @@ export class EvaluationSummaryService {
       calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
-    const evaluation = await MongoEvaluation.findById(evalId).lean();
-    if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
+    const lockKey = `evaluation_config:${evalId}`;
 
-    const evalMetricIdSet = new Set(
-      (evaluation.evaluators || []).map((evaluator: any) => evaluator.metric._id.toString())
+    // 使用写锁保护整个配置更新流程，确保与所有相关操作互斥
+    return await readWriteLock.withWriteLock(
+      lockKey,
+      async () => {
+        addLog.info('[Evaluation] Starting configuration update with exclusive lock', {
+          evalId,
+          lockKey
+        });
+
+        const evaluation = await MongoEvaluation.findById(evalId).lean();
+        if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
+
+        const evalMetricIdSet = new Set(
+          (evaluation.evaluators || []).map((evaluator: any) => evaluator.metric._id.toString())
+        );
+        for (const m of metricsConfig) {
+          if (!evalMetricIdSet.has(m.metricId)) {
+            throw new Error(EvaluationErrEnum.summaryMetricsConfigError);
+          }
+        }
+
+        // Always call updateConfigurationAndRecalculate, let it decide internally what to recalculate
+        await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
+
+        addLog.info(
+          '[Evaluation] Configuration update completed successfully with exclusive lock',
+          {
+            evalId,
+            lockKey
+          }
+        );
+      },
+      120, // 2分钟超时，因为配置更新可能需要重新计算大量数据，且要等待所有相关操作完成
+      30, // 最多重试30次
+      500 // 每次重试间隔500ms，给其他操作更多时间完成
     );
-    for (const m of metricsConfig) {
-      if (!evalMetricIdSet.has(m.metricId)) {
-        throw new Error(EvaluationErrEnum.summaryMetricsConfigError);
-      }
-    }
-
-    // Always call updateConfigurationAndRecalculate, let it decide internally what to recalculate
-    await this.updateConfigurationAndRecalculate(evalId, evaluation, metricsConfig);
   }
 
   // Check if weights have changed by comparing current and new configurations
@@ -489,6 +578,9 @@ export class EvaluationSummaryService {
     await mongoSessionRun(async (session: ClientSession) => {
       const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
+      // Generate a new configuration version to invalidate ongoing calculations
+      const configVersion = Date.now();
+
       // Update database configuration within transaction
       await this.updateDatabaseConfig(evalId, evaluation, metricsConfig, configMap, session);
 
@@ -496,7 +588,8 @@ export class EvaluationSummaryService {
       const updatedEvaluation = await MongoEvaluation.findById(evalId).session(session).lean();
       if (updatedEvaluation) {
         addLog.info('[Evaluation] Configuration updated, recalculating summary metrics', {
-          evalId
+          evalId,
+          configVersion
         });
 
         // Always recalculate evaluation summary metrics and aggregate score
@@ -511,9 +604,11 @@ export class EvaluationSummaryService {
         // Only recalculate evaluation item aggregate scores if weights changed
         if (hasWeightChanges) {
           addLog.info('[Evaluation] Weight changes detected, recalculating item aggregate scores', {
-            evalId
+            evalId,
+            configVersion
           });
-          await recalculateAllEvaluationItemAggregateScores(evalId, session);
+          // 传递hasConfigLock=true，因为当前已经持有配置锁
+          await recalculateAllEvaluationItemAggregateScores(evalId, session, true);
         } else {
           addLog.info(
             '[Evaluation] No weight changes, skipping item aggregate score recalculation',
