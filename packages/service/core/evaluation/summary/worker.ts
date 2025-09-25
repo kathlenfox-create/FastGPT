@@ -40,71 +40,59 @@ async function prepareSingleEvaluatorTask(
 
 // 初始化评估总结Worker
 export function initEvaluationSummaryWorker() {
-  const worker = getWorker<EvaluationSummaryJobData>(
-    QueueNames.evaluationSummary,
-    async (job) => {
-      const { evalId, metricId } = job.data;
+  const worker = getWorker<EvaluationSummaryJobData>(QueueNames.evaluationSummary, async (job) => {
+    const { evalId, metricId } = job.data;
 
-      addLog.info('[EvaluationSummary] Worker processing single metric task', {
+    addLog.info('[EvaluationSummary] Worker processing single metric task', {
+      jobId: job.id,
+      evalId,
+      metricId
+    });
+
+    try {
+      // 获取评估任务数据
+      const evaluation = await MongoEvaluation.findById(evalId).lean();
+      if (!evaluation) {
+        throw new Error(`Evaluation task not found: ${evalId}`);
+      }
+
+      // 验证和准备单个评估器任务
+      const evaluatorTask = await prepareSingleEvaluatorTask(evaluation, metricId);
+
+      if (!evaluatorTask) {
+        addLog.warn('[EvaluationSummary] No valid metric to process', {
+          evalId,
+          metricId
+        });
+        return;
+      }
+
+      // 状态更新将通过BullMQ事件监听器自动处理
+
+      // 执行单个指标的评估总结生成
+      await EvaluationSummaryService.generateSingleMetricSummary(
+        evaluation,
+        evaluatorTask.metricId,
+        evaluatorTask.evaluatorIndex,
+        evaluatorTask.evaluator
+      );
+
+      addLog.info('[EvaluationSummary] Worker task completed successfully', {
         jobId: job.id,
         evalId,
         metricId
       });
-
-      try {
-        // 获取评估任务数据
-        const evaluation = await MongoEvaluation.findById(evalId).lean();
-        if (!evaluation) {
-          throw new Error(`Evaluation task not found: ${evalId}`);
-        }
-
-        // 验证和准备单个评估器任务
-        const evaluatorTask = await prepareSingleEvaluatorTask(evaluation, metricId);
-
-        if (!evaluatorTask) {
-          addLog.warn('[EvaluationSummary] No valid metric to process', {
-            evalId,
-            metricId
-          });
-          return;
-        }
-
-        // 状态更新将通过BullMQ事件监听器自动处理
-
-        // 执行单个指标的评估总结生成
-        await EvaluationSummaryService.generateSingleMetricSummary(
-          evaluation,
-          evaluatorTask.metricId,
-          evaluatorTask.evaluatorIndex,
-          evaluatorTask.evaluator
-        );
-
-        addLog.info('[EvaluationSummary] Worker task completed successfully', {
-          jobId: job.id,
-          evalId,
-          metricId
-        });
-      } catch (error) {
-        // 状态更新将通过BullMQ的failed事件监听器自动处理
-        addLog.error('[EvaluationSummary] Worker task failed', {
-          jobId: job.id,
-          evalId,
-          metricId,
-          error
-        });
-        throw error;
-      }
-    },
-    {
-      concurrency: global.systemEnv?.evalConfig?.summaryConcurrency || 1,
-      removeOnComplete: {
-        count: 0 // 完成后立即删除，允许重复提交相同jobId
-      },
-      removeOnFail: {
-        count: 0 // 失败后立即删除，允许重新提交失败的任务
-      }
+    } catch (error) {
+      // 状态更新将通过BullMQ的failed事件监听器自动处理
+      addLog.error('[EvaluationSummary] Worker task failed', {
+        jobId: job.id,
+        evalId,
+        metricId,
+        error
+      });
+      throw error;
     }
-  );
+  });
 
   // 监听任务开始事件
   worker.on('active', async (job) => {
