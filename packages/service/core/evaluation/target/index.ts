@@ -159,13 +159,20 @@ export class WorkflowTarget extends EvaluationTarget {
         maxRunTimes: WORKFLOW_MAX_RUN_TIMES
       });
 
-    console.log('[Evaluation Target] Workflow execution result:', {
-      assistantResponsesCount: assistantResponses?.length || 0,
-      firstResponse: assistantResponses[0]?.text?.content || '',
-      flowUsages,
-      flowResponsesCount: flowResponses?.length || 0,
-      durationSeconds
-    });
+    console.log(
+      '[Evaluation Target] Workflow execution result:',
+      JSON.stringify(
+        {
+          assistantResponses,
+          flowUsages,
+          flowResponses,
+          system_memories,
+          durationSeconds
+        },
+        null,
+        2
+      )
+    );
 
     const response = removeDatasetCiteText(assistantResponses[0]?.text?.content || '', false);
 
