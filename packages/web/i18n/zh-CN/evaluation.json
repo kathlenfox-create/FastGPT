@@ -8,6 +8,7 @@
   "target_invalid_config": "评估目标配置无效",
   "target_app_id_missing": "应用ID缺失",
   "target_version_id_missing": "应用版本ID缺失",
+  "target_initial_version_not_allowed": "不能使用初始版本进行评估，请选择手动保存的版本。",
   "evaluators_required": "评估器必填",
   "evaluator_invalid_config": "评估器配置无效",
   "evaluator_invalid_score_scaling": "评估器分数缩放值无效，必须是大于0且小于等于10000的正数（支持小数，如0.01表示缩小100倍）",

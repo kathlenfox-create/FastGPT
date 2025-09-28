@@ -13,6 +13,7 @@ import {
 import { dispatchWorkFlow } from '../../workflow/dispatch';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoApp } from '../../app/schema';
+import { MongoAppVersion } from '../../app/version/schema';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -247,6 +248,29 @@ export class WorkflowTarget extends EvaluationTarget {
           message: `App with ID '${this.config.appId}' not found or not accessible`,
           field: 'config.appId',
           debugInfo: { appId: this.config.appId }
+        });
+        return { isValid: false, errors, warnings };
+      }
+
+      // Check if using the first version (earliest by time)
+      const firstVersion = await MongoAppVersion.findOne({
+        appId: String(appData._id)
+      })
+        .sort({ time: 1 })
+        .lean();
+
+      if (firstVersion && this.config.versionId === String(firstVersion._id)) {
+        errors.push({
+          code: EvaluationErrEnum.evalTargetInitialVersionNotAllowed,
+          message:
+            'Cannot use the initial version for evaluation. Please select a manual save version.',
+          field: 'config.versionId',
+          debugInfo: {
+            appId: this.config.appId,
+            versionId: this.config.versionId,
+            firstVersionId: String(firstVersion._id),
+            firstVersionTime: firstVersion.time
+          }
         });
         return { isValid: false, errors, warnings };
       }

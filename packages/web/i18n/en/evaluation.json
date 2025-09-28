@@ -8,6 +8,7 @@
   "target_invalid_config": "Evaluation target configuration is invalid.",
   "target_app_id_missing": "App ID is missing.",
   "target_version_id_missing": "App version ID is missing.",
+  "target_initial_version_not_allowed": "Cannot use the initial version for evaluation. Please select a manual save version.",
   "evaluators_required": "Evaluator is required.",
   "evaluator_invalid_config": "Evaluator configuration is invalid.",
   "evaluator_invalid_score_scaling": "Invalid score scaling value, must be a positive number greater than 0 and less than or equal to 10000 (decimals supported, e.g., 0.01 means 100x reduction)",
