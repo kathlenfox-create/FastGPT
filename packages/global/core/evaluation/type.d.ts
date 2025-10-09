@@ -203,7 +203,6 @@ export interface GenerateSummaryParams {
 export interface GenerateSummaryResponse {
   success: boolean;
   message: string;
-  taskId?: string;
 }
 
 export interface SummaryGenerationTaskData {

@@ -510,7 +510,6 @@ export class EvaluationSummaryService {
         }
 
         // Get metric name for logging
-        const metricName = evaluation.evaluators[evaluatorIndex].metric.name;
 
         validMetricIds.push(metricId);
       });
@@ -723,12 +722,6 @@ export class EvaluationSummaryService {
     filteredData: any[];
     totalDataCount: number;
   }> {
-    addLog.debug('[getFilteredEvaluationData] 入参:', {
-      evalId,
-      metricId,
-      metricName: evaluator.metric.name,
-      thresholdValue
-    });
     try {
       // Get evaluation to check metric count
       const evaluation = await MongoEvaluation.findById(evalId).lean();
