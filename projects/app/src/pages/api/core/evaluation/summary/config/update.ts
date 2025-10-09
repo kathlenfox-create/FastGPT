@@ -75,17 +75,10 @@ async function handler(
     }
   }
 
-  // Add calculateType to each metric configuration
-  const metricsConfigWithCalculateType = metricsConfig.map((metric) => ({
-    metricId: metric.metricId,
-    thresholdValue: metric.thresholdValue as number,
-    weight: metric.weight,
-    calculateType: calculateType
-  }));
-
   await EvaluationSummaryService.updateEvaluationSummaryConfig(
     evalId,
-    metricsConfigWithCalculateType
+    calculateType,
+    metricsConfig
   );
 
   addLog.info('[Evaluation] Summary configuration updated successfully', {

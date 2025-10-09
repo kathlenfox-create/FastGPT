@@ -13,7 +13,6 @@ import {
 export interface EvaluationSummaryJobData {
   evalId: string;
   metricId: string;
-  timestamp: number;
 }
 
 // 获取评估总结队列
@@ -90,8 +89,7 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
         'generateSummary',
         {
           evalId,
-          metricId,
-          timestamp: Date.now()
+          metricId
         },
         {
           attempts: 1, // 不自动重试，由用户通过API主动重试

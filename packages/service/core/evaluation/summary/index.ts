@@ -11,9 +11,8 @@ import type {
 import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 import { SummaryStatusEnum, PERFECT_SCORE } from '@fastgpt/global/core/evaluation/constants';
-import { getEvaluationSummaryTokenLimit } from '../utils/tokenLimiter';
+import { getEvaluationSummaryTokenLimit, getEvaluationSummaryModel } from '../utils/tokenLimiter';
 import { createChatCompletion } from '../../ai/config';
-import { getLLMModel, getEvaluationModel } from '../../ai/model';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -258,9 +257,9 @@ export class EvaluationSummaryService {
         const summaryConfig = evaluation.summaryConfigs[index];
 
         if (stats) {
-          // Select score based on current evaluator's calculation method with NaN protection
+          // Select score based on evaluation's calculation method with NaN protection
           let rawScore =
-            summaryConfig.calculateType === CalculateMethodEnum.median
+            evaluation.calculateType === CalculateMethodEnum.median
               ? stats.medianScore
               : stats.avgScore;
 
@@ -350,14 +349,13 @@ export class EvaluationSummaryService {
   }
 
   // Update evaluation summary configuration (threshold, weight, calculation method)
-  // 使用MongoDB事务保证配置更新的原子性
   static async updateEvaluationSummaryConfig(
     evalId: string,
+    calculateType: CalculateMethodEnum,
     metricsConfig: Array<{
       metricId: string;
       thresholdValue: number;
       weight?: number;
-      calculateType?: CalculateMethodEnum;
     }>
   ): Promise<void> {
     addLog.info('[Evaluation] Starting configuration update', {
@@ -365,7 +363,6 @@ export class EvaluationSummaryService {
       metricsCount: metricsConfig.length
     });
 
-    // 检查基本参数有效性
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
@@ -378,7 +375,6 @@ export class EvaluationSummaryService {
       }
     }
 
-    // 使用事务更新配置
     await mongoSessionRun(async (session: ClientSession) => {
       const configMap = new Map(metricsConfig.map((m) => [m.metricId, m]));
 
@@ -397,8 +393,7 @@ export class EvaluationSummaryService {
           if (config) {
             return {
               ...summaryConfig,
-              ...(config.weight !== undefined && { weight: config.weight }),
-              ...(config.calculateType !== undefined && { calculateType: config.calculateType })
+              ...(config.weight !== undefined && { weight: config.weight })
             };
           }
           return summaryConfig;
@@ -407,7 +402,13 @@ export class EvaluationSummaryService {
 
       await MongoEvaluation.updateOne(
         { _id: evalId },
-        { $set: { evaluators: updatedEvaluators, summaryConfigs: updatedSummaryConfigs } },
+        {
+          $set: {
+            calculateType,
+            evaluators: updatedEvaluators,
+            summaryConfigs: updatedSummaryConfigs
+          }
+        },
         { session }
       );
 
@@ -439,9 +440,8 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-    // Get calculation type from first summary config (since all metrics use the same type)
-    const firstSummaryConfig = evaluation.summaryConfigs[0];
-    const calculateType = firstSummaryConfig.calculateType;
+    // Get calculation type from evaluation (shared across all metrics)
+    const calculateType = evaluation.calculateType;
     const calculateTypeName = CaculateMethodMap[calculateType]?.name || 'Unknown';
 
     // Build return data, remove calculation type from individual metrics
@@ -593,12 +593,11 @@ export class EvaluationSummaryService {
       }
 
       // 2. Token control and content preparation
-      const tokenLimit = getEvaluationSummaryTokenLimit(evaluator.runtimeConfig?.llm);
+      const modelData = getEvaluationSummaryModel();
+      const tokenLimit = getEvaluationSummaryTokenLimit(modelData.name);
       const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
         filteredData,
-        tokenLimit,
-        evaluator.thresholdValue || 0,
-        evaluator.runtimeConfig?.llm
+        tokenLimit
       );
 
       // 3. Check balance
@@ -819,9 +818,7 @@ export class EvaluationSummaryService {
    */
   private static async truncateDataByTokens(
     data: any[],
-    tokenLimit: number,
-    thresholdValue: number,
-    llmModel?: string
+    tokenLimit: number
   ): Promise<{
     truncatedData: any[];
     truncatedCount: number;
@@ -908,9 +905,7 @@ export class EvaluationSummaryService {
     usage: any;
   }> {
     try {
-      const llmModel = evaluator.runtimeConfig?.llm;
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
-
+      const modelData = getEvaluationSummaryModel();
       const userPrompt = this.buildUserPrompt(data);
 
       const messages: ChatCompletionMessageParam[] = [
@@ -928,7 +923,7 @@ export class EvaluationSummaryService {
 
       const { response, isStreamResponse } = await createChatCompletion({
         body: {
-          model: llmModel,
+          model: modelData.model,
           messages: requestMessages,
           temperature: 1e-7,
           max_tokens: 1000,
@@ -965,17 +960,16 @@ export class EvaluationSummaryService {
     if (!usage) return;
 
     try {
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
+      const modelData = getEvaluationSummaryModel(llmModel);
       const inputTokens = usage?.prompt_tokens || 0;
       const outputTokens = usage?.completion_tokens || 0;
-      const totalTokens = inputTokens + outputTokens;
 
       // Convert tokens to points using standard utility function
       const { totalPoints } = formatModelChars2Points({
-        model: llmModel || modelData?.model || '',
+        model: modelData.model,
         inputTokens,
         outputTokens,
-        modelType: (modelData?.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
+        modelType: (modelData.type as `${ModelTypeEnum}`) || ModelTypeEnum.llm
       });
 
       // Use unified evaluation usage recording
@@ -1040,17 +1034,11 @@ export class EvaluationSummaryService {
 评估原因: ${reason}`;
   }
 
-  /**
-   * 判断数据是否全部满分
-   */
   private static isAllPerfectScores(data: any[]): boolean {
     if (data.length === 0) return false;
     return data.every((item) => (item.matchingMetricResult?.data?.score || 0) >= PERFECT_SCORE);
   }
 
-  /**
-   * 优化数据选择策略 - 根据满分情况选择最合适的数据用于分析
-   */
   private static selectOptimalData(data: any[]): any[] {
     if (data.length === 0) return [];
 
@@ -1059,9 +1047,6 @@ export class EvaluationSummaryService {
     return this.selectOptimalDataWithFlag(data, isAllPerfect);
   }
 
-  /**
-   * 优化数据选择策略 - 使用预计算的满分标志
-   */
   private static selectOptimalDataWithFlag(data: any[], isAllPerfect: boolean): any[] {
     if (data.length === 0) return [];
 
