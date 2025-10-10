@@ -40,6 +40,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 // Helper function to extract retrieval context from workflow results
 function extractRetrievalContext(flowResponses: ChatHistoryItemResType[]): string[] {
@@ -159,6 +160,19 @@ export class WorkflowTarget extends EvaluationTarget {
         maxRunTimes: WORKFLOW_MAX_RUN_TIMES
       });
 
+    // check workflow whether have any error happen
+    let errorMessage: string | undefined = undefined;
+    flowResponses.some((moduleRes) => {
+      if (moduleRes.errorText) {
+        errorMessage = moduleRes.errorText;
+        return true;
+      }
+      if (moduleRes.error) {
+        errorMessage = getErrText(moduleRes.error, EvaluationErrEnum.evalTargetExecutionError);
+        return true;
+      }
+    });
+
     const response = removeDatasetCiteText(assistantResponses[0]?.text?.content || '', false);
 
     // Construct user question object
@@ -211,7 +225,8 @@ export class WorkflowTarget extends EvaluationTarget {
       usage: flowUsages,
       responseTime: durationSeconds,
       chatId,
-      aiChatItemDataId
+      aiChatItemDataId,
+      errorMessage
     };
   }
 

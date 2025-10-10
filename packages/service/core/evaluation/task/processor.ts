@@ -291,6 +291,9 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       }
 
       if (!targetOutput.actualOutput) {
+        if (targetOutput.errorMessage) {
+          throw new Error(targetOutput.errorMessage);
+        }
         throw new Error(EvaluationErrEnum.evalTargetExecutionError);
       }
     } catch (error) {
