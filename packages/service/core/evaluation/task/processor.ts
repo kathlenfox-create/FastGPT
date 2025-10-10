@@ -10,7 +10,10 @@ import { MongoEvaluation, MongoEvalItem } from './schema';
 import { createTargetInstance } from '../target';
 import { createEvaluatorInstance } from '../evaluator';
 import { Types } from 'mongoose';
-import { EvaluationStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import {
+  EvaluationStatusEnum,
+  TARGET_RUN_ERROR_PREFIX
+} from '@fastgpt/global/core/evaluation/constants';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -239,6 +242,9 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
       }
 
       if (!targetOutput.actualOutput) {
+        if (targetOutput.errorMessage) {
+          throw new Error(`${TARGET_RUN_ERROR_PREFIX}: ${targetOutput.errorMessage}`);
+        }
         throw new Error(EvaluationErrEnum.evalTargetExecutionError);
       }
     } catch (error) {
