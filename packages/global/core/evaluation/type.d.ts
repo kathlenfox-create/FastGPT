@@ -31,7 +31,7 @@ export interface SummaryConfig {
   metricId: string;
   metricName: string;
   weight: number;
-  summary: Summary;
+  summary: string;
   summaryStatus: SummaryStatusEnum;
   errorReason: string;
 }

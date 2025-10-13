@@ -396,9 +396,9 @@ export class EvaluationSummaryService {
         { _id: evalId },
         {
           $set: {
-            'summary.calculateType': calculateType,
+            'summaryData.calculateType': calculateType,
             evaluators: updatedEvaluators,
-            'summary.summaryConfigs': updatedSummaryConfigs
+            'summaryData.summaryConfigs': updatedSummaryConfigs
           }
         },
         { session }
@@ -652,14 +652,14 @@ export class EvaluationSummaryService {
     errorReason?: string
   ): Promise<void> {
     const updateData: any = {
-      [`summary.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
-      [`summary.summaryConfigs.${evaluatorIndex}.summary`]: summary
+      [`summaryData.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
+      [`summaryData.summaryConfigs.${evaluatorIndex}.summary`]: summary
     };
 
     if (errorReason) {
-      updateData[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
+      updateData[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
     } else {
-      updateData[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
+      updateData[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
     }
 
     await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateData });

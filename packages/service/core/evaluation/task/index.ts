@@ -408,7 +408,7 @@ export class EvaluationTaskService {
             },
             metricNames: 1,
             evaluators: 1, // Add evaluators field for real-time calculation
-            summary: 1,
+            summaryData: 1,
             aggregateScore: 1,
             tmbId: 1
           }
@@ -475,14 +475,13 @@ export class EvaluationTaskService {
             error
           });
           // Return evaluation with default score values if calculation fails
-          const defaultSummaryConfigs = evaluation.summaryData.summaryConfigs.map(
-            (summaryConfig: any) => ({
+          const defaultSummaryConfigs =
+            evaluation.summaryData?.summaryConfigs?.map((summaryConfig: any) => ({
               ...summaryConfig,
               score: 0,
               completedItemCount: 0,
               overThresholdItemCount: 0
-            })
-          );
+            })) || [];
 
           return {
             ...evaluation,

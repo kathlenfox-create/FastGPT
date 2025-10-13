@@ -150,7 +150,7 @@ export const EvaluationTaskSchema = new Schema({
           type: Number,
           required: true
         },
-        summaryData: {
+        summary: {
           type: String,
           default: ''
         },

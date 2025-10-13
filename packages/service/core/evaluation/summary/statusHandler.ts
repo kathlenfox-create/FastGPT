@@ -27,20 +27,20 @@ export class SummaryStatusHandler {
       }
 
       const updateObj: Record<string, any> = {
-        [`summary.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
+        [`summaryData.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
       };
 
       switch (status) {
         case SummaryStatusEnum.generating:
-          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.completed:
-          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.failed:
-          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] =
+          updateObj[`summaryData.summaryConfigs.${evaluatorIndex}.errorReason`] =
             errorReason || 'Unknown error';
           break;
       }
