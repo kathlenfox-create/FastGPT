@@ -10,8 +10,13 @@ import type {
 } from '@fastgpt/global/core/evaluation/type';
 import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
-import { SummaryStatusEnum, PERFECT_SCORE } from '@fastgpt/global/core/evaluation/constants';
-import { getEvaluationSummaryTokenLimit } from '../utils/tokenLimiter';
+import {
+  SummaryStatusEnum,
+  PERFECT_SCORE,
+  MAX_TOKEN_FOR_EVALUATION_SUMMARY,
+  TEMPERATURE_FOR_EVALUATION_SUMMARY
+} from '@fastgpt/global/core/evaluation/constants';
+import { getEvaluationSummaryTokenLimit, getEvaluationSummaryModel } from '../utils/tokenLimiter';
 import { createChatCompletion } from '../../ai/config';
 import { getLLMModel, getEvaluationModel } from '../../ai/model';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
@@ -71,16 +76,16 @@ export class EvaluationSummaryService {
       const metricData = calculatedData.metricsData.find((m) => m.metricId === metricId);
       const completedItemCount = metricData?.totalCount || 0;
       const overThresholdItemCount = metricData?.aboveThresholdCount || 0;
+      const underThresholdItemCount = metricData?.belowThresholdCount || 0;
       const metricScore = metricData?.metricScore || 0;
 
       const threshold = evaluator.thresholdValue || 0;
       const underThresholdRate =
         completedItemCount > 0
-          ? Math.round(((completedItemCount - overThresholdItemCount) / completedItemCount) * 100)
+          ? Math.round((underThresholdItemCount / completedItemCount) * 100)
           : 0;
-      const underThresholdItemCount = completedItemCount - overThresholdItemCount;
       // Generate customSummary in format: "(完成个数个)summary"
-      const customSummary = `${underThresholdRate}%(${underThresholdItemCount}个)${summaryConfig.summary || ''}`;
+      const customSummary = `${underThresholdRate}%(${underThresholdItemCount})${summaryConfig.summary || ''}`;
 
       return {
         metricId: metricId,
@@ -113,6 +118,7 @@ export class EvaluationSummaryService {
       weight: number;
       thresholdValue: number;
       aboveThresholdCount: number;
+      belowThresholdCount: number;
       totalCount: number;
     }>;
     aggregateScore: number;
@@ -204,8 +210,7 @@ export class EvaluationSummaryService {
                 0
               ]
             },
-            successCount: { $size: '$successfulScores' },
-            totalCompletedCount: { $size: '$uniqueItemIds' }
+            successCount: { $size: '$successfulScores' }
           }
         }
       ];
@@ -245,6 +250,7 @@ export class EvaluationSummaryService {
         weight: number;
         thresholdValue: number;
         aboveThresholdCount: number;
+        belowThresholdCount: number;
         totalCount: number;
       }> = [];
 
@@ -276,6 +282,11 @@ export class EvaluationSummaryService {
             (score: number) => score >= (evaluator.thresholdValue || 0)
           ).length;
 
+          // Calculate belowThresholdCount from successful scores that are below threshold
+          const belowThresholdCount = stats.successfulScores.filter(
+            (score: number) => score < (evaluator.thresholdValue || 0)
+          ).length;
+
           const weight = summaryConfig.weight;
 
           metricsData.push({
@@ -285,6 +296,7 @@ export class EvaluationSummaryService {
             weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount,
+            belowThresholdCount,
             totalCount: stats.totalCompletedCount
           });
 
@@ -302,6 +314,7 @@ export class EvaluationSummaryService {
             weight: weight,
             thresholdValue: evaluator.thresholdValue || 0,
             aboveThresholdCount: 0,
+            belowThresholdCount: 0,
             totalCount: 0
           });
 
@@ -338,6 +351,7 @@ export class EvaluationSummaryService {
           weight: summaryConfig.weight,
           thresholdValue: evaluator.thresholdValue || 0,
           aboveThresholdCount: 0,
+          belowThresholdCount: 0,
           totalCount: 0
         };
       });
@@ -594,7 +608,8 @@ export class EvaluationSummaryService {
       }
 
       // 2. Token control and content preparation
-      const tokenLimit = getEvaluationSummaryTokenLimit(evaluator.runtimeConfig?.llm);
+      const modelData = getEvaluationSummaryModel();
+      const tokenLimit = getEvaluationSummaryTokenLimit(modelData.name);
       const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
         filteredData,
         tokenLimit,
@@ -628,15 +643,11 @@ export class EvaluationSummaryService {
       }
 
       // 4. Call LLM to generate report
-      const { summary, usage } = await this.callLLMForSummary(
-        evaluator,
-        truncatedData,
-        totalDataCount,
-        truncatedCount
-      );
+      const summaryModel = undefined;
+      const { summary, usage } = await this.callLLMForSummary(truncatedData, summaryModel);
 
       // 5. Record costs and usage
-      const llmModel = evaluator.runtimeConfig?.llm;
+      const llmModel = undefined;
       await this.recordUsage(evaluation, evaluator, usage, llmModel);
 
       // 6. Update results
@@ -906,17 +917,14 @@ export class EvaluationSummaryService {
    * 调用LLM生成总结
    */
   private static async callLLMForSummary(
-    evaluator: any,
     data: any[],
-    totalDataCount: number,
-    includedDataCount: number
+    llmModel?: string
   ): Promise<{
     summary: string;
     usage: any;
   }> {
     try {
-      const llmModel = evaluator.runtimeConfig?.llm;
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
+      const modelData = getEvaluationSummaryModel(llmModel);
 
       const userPrompt = this.buildUserPrompt(data);
 
@@ -935,13 +943,14 @@ export class EvaluationSummaryService {
 
       const { response, isStreamResponse } = await createChatCompletion({
         body: {
-          model: llmModel,
+          model: modelData.model,
           messages: requestMessages,
-          temperature: 1e-7,
-          max_tokens: 1000,
+          temperature: TEMPERATURE_FOR_EVALUATION_SUMMARY,
+          max_tokens: MAX_TOKEN_FOR_EVALUATION_SUMMARY,
           stream: false
         },
-        modelData
+        modelData,
+        timeout: 30000
       });
 
       if (isStreamResponse) {
@@ -972,7 +981,7 @@ export class EvaluationSummaryService {
     if (!usage) return;
 
     try {
-      const modelData = llmModel ? getLLMModel(llmModel) : getEvaluationModel() || getLLMModel();
+      const modelData = getEvaluationSummaryModel(llmModel);
       const inputTokens = usage?.prompt_tokens || 0;
       const outputTokens = usage?.completion_tokens || 0;
       const totalTokens = inputTokens + outputTokens;
