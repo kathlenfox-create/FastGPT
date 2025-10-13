@@ -8,10 +8,13 @@ import {
   type JobCleanupResult,
   type JobCleanupOptions
 } from '../utils/jobCleanup';
+import type { LanguageType } from './util/languageUtil';
+import { detectEvaluationLanguage } from './util/languageUtil';
 
 export interface EvaluationSummaryJobData {
   evalId: string;
   metricId: string;
+  languageType: LanguageType;
 }
 
 export function getEvaluationSummaryQueue() {
@@ -50,6 +53,11 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
   try {
     const queue = getEvaluationSummaryQueue();
 
+    // Detect language once for the entire evaluation
+    addLog.info('[EvaluationSummary] Detecting evaluation language', { evalId });
+    const { language: languageType } = await detectEvaluationLanguage(evalId);
+    addLog.info('[EvaluationSummary] Language detected', { evalId, languageType });
+
     const addPromises = metricIds.map(async (metricId) => {
       const hasActiveJob = await checkActiveSummaryJob(evalId, metricId);
       if (hasActiveJob) {
@@ -70,14 +78,16 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
 
       addLog.info('[EvaluationSummary] Adding new task to queue', {
         evalId,
-        metricId
+        metricId,
+        languageType
       });
 
       return queue.add(
         'generateSummary',
         {
           evalId,
-          metricId
+          metricId,
+          languageType
         },
         {
           attempts: 1,

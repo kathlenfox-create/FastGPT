@@ -33,7 +33,7 @@ import {
   goodExampleEn,
   badExampleEn
 } from '@fastgpt/global/core/ai/prompt/eval';
-import { detectEvaluationLanguage, LanguageType } from './util/languageUtil';
+import { LanguageType } from './util/languageUtil';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -71,7 +71,7 @@ export class EvaluationSummaryService {
 
     const data = evaluation.evaluators.map((evaluator, index) => {
       const metricId = evaluator.metric._id.toString();
-      const summaryConfig = evaluation.summaryConfigs[index];
+      const summaryConfig = evaluation.summaryData.summaryConfigs[index];
 
       const metricData = calculatedData.metricsData.find((m) => m.metricId === metricId);
       const completedItemCount = metricData?.totalCount || 0;
@@ -135,8 +135,12 @@ export class EvaluationSummaryService {
         };
       }
 
-      if (!evaluation.summaryConfigs || !Array.isArray(evaluation.summaryConfigs)) {
-        addLog.warn('[calculateMetricScores] Evaluation has no summaryConfigs', {
+      if (
+        !evaluation.summaryData ||
+        !evaluation.summaryData.summaryConfigs ||
+        !Array.isArray(evaluation.summaryData.summaryConfigs)
+      ) {
+        addLog.warn('[calculateMetricScores] Evaluation has no summary or summaryConfigs', {
           evalId: evaluation._id
         });
         return {
@@ -244,11 +248,11 @@ export class EvaluationSummaryService {
         const metricId = evaluator.metric._id.toString();
         const metricName = evaluator.metric.name;
         const stats = processedStats.find((s) => s._id === metricName);
-        const summaryConfig = evaluation.summaryConfigs[index];
+        const summaryConfig = evaluation.summaryData.summaryConfigs[index];
 
         if (stats) {
           let rawScore =
-            evaluation.calculateType === CalculateMethodEnum.median
+            evaluation.summaryData.calculateType === CalculateMethodEnum.median
               ? stats.medianScore
               : stats.avgScore;
 
@@ -266,11 +270,6 @@ export class EvaluationSummaryService {
           // Calculate belowThresholdCount from successful scores that are below threshold
           const belowThresholdCount = stats.successfulScores.filter(
             (score: number) => score < thresholdValue
-          ).length;
-
-          // Calculate belowThresholdCount from successful scores that are below threshold
-          const belowThresholdCount = stats.successfulScores.filter(
-            (score: number) => score < (evaluator.thresholdValue || 0)
           ).length;
 
           const weight = summaryConfig.weight;
@@ -324,7 +323,7 @@ export class EvaluationSummaryService {
       });
 
       const defaultData = evaluation.evaluators.map((evaluator, index) => {
-        const summaryConfig = evaluation.summaryConfigs[index];
+        const summaryConfig = evaluation.summaryData.summaryConfigs[index];
         return {
           metricId: evaluator.metric._id.toString(),
           metricName: evaluator.metric.name,
@@ -378,7 +377,7 @@ export class EvaluationSummaryService {
         return config ? { ...evaluator, thresholdValue: config.thresholdValue } : evaluator;
       });
 
-      const updatedSummaryConfigs = evaluation.summaryConfigs.map(
+      const updatedSummaryConfigs = evaluation.summaryData.summaryConfigs.map(
         (summaryConfig: any, index: number) => {
           const metricId = evaluation.evaluators[index].metric._id.toString();
           const config = configMap.get(metricId);
@@ -397,9 +396,9 @@ export class EvaluationSummaryService {
         { _id: evalId },
         {
           $set: {
-            calculateType,
+            'summary.calculateType': calculateType,
             evaluators: updatedEvaluators,
-            summaryConfigs: updatedSummaryConfigs
+            'summary.summaryConfigs': updatedSummaryConfigs
           }
         },
         { session }
@@ -432,11 +431,11 @@ export class EvaluationSummaryService {
     const evaluation = await MongoEvaluation.findById(evalId).lean();
     if (!evaluation) throw new Error(EvaluationErrEnum.evalTaskNotFound);
 
-    const calculateType = evaluation.calculateType;
+    const calculateType = evaluation.summaryData.calculateType;
     const calculateTypeName = CaculateMethodMap[calculateType]?.name || 'Unknown';
 
     const metricsConfig = evaluation.evaluators.map((evaluator, index) => {
-      const summaryConfig = evaluation.summaryConfigs[index];
+      const summaryConfig = evaluation.summaryData.summaryConfigs[index];
       return {
         metricId: evaluator.metric._id.toString(),
         metricName: evaluator.metric.name,
@@ -545,14 +544,16 @@ export class EvaluationSummaryService {
     evaluation: EvaluationSchemaType,
     metricId: string,
     evaluatorIndex: number,
-    evaluator: any
+    evaluator: any,
+    languageType: LanguageType
   ): Promise<void> {
     const evalId = evaluation._id.toString();
 
     addLog.info('[EvaluationSummary] Starting single metric report generation', {
       evalId,
       metricId,
-      metricName: evaluator.metric.name
+      metricName: evaluator.metric.name,
+      languageType
     });
 
     const { filteredData, totalDataCount } = await this.getFilteredEvaluationData(
@@ -570,11 +571,11 @@ export class EvaluationSummaryService {
       throw new Error('No matching evaluation data found, cannot generate summary report');
     }
 
-    const { language } = await detectEvaluationLanguage(evalId);
-    addLog.info('[EvaluationSummary] Language detected', {
+    // Use languageType from job data instead of detecting again
+    addLog.info('[EvaluationSummary] Using language type from job data', {
       evalId,
       metricId,
-      language
+      language: languageType
     });
 
     const modelData = getEvaluationSummaryModel();
@@ -582,7 +583,7 @@ export class EvaluationSummaryService {
     const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
       filteredData,
       tokenLimit,
-      language
+      languageType
     );
 
     try {
@@ -611,7 +612,11 @@ export class EvaluationSummaryService {
 
     // 4. Call LLM to generate report
     const summaryModel = undefined;
-    const { summary, usage } = await this.callLLMForSummary(truncatedData, summaryModel);
+    const { summary, usage } = await this.callLLMForSummary(
+      truncatedData,
+      languageType,
+      summaryModel
+    );
 
     // undefine will use deafulatevaluation model
     const llmModel = undefined;
@@ -647,14 +652,14 @@ export class EvaluationSummaryService {
     errorReason?: string
   ): Promise<void> {
     const updateData: any = {
-      [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
-      [`summaryConfigs.${evaluatorIndex}.summary`]: summary
+      [`summary.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status,
+      [`summary.summaryConfigs.${evaluatorIndex}.summary`]: summary
     };
 
     if (errorReason) {
-      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
+      updateData[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = errorReason;
     } else {
-      updateData[`summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
+      updateData[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = undefined;
     }
 
     await MongoEvaluation.updateOne({ _id: evalId }, { $set: updateData });
@@ -849,13 +854,14 @@ export class EvaluationSummaryService {
 
   private static async callLLMForSummary(
     data: any[],
-    language: LanguageType
+    language: LanguageType,
+    llmModel?: string
   ): Promise<{
     summary: string;
     usage: any;
   }> {
     try {
-      const modelData = getEvaluationSummaryModel();
+      const modelData = getEvaluationSummaryModel(llmModel);
       const userPrompt = this.buildUserPrompt(data, language);
 
       const messages: ChatCompletionMessageParam[] = [
@@ -1039,10 +1045,7 @@ eval_reason: ${reason}`;
         return;
       }
 
-      const currentEvaluation = await MongoEvaluation.findById(
-        evalId,
-        'evaluators summaryConfigs'
-      ).lean();
+      const currentEvaluation = await MongoEvaluation.findById(evalId, 'evaluators summary').lean();
 
       if (!currentEvaluation?.evaluators || currentEvaluation.evaluators.length === 0) {
         return;
@@ -1052,7 +1055,7 @@ eval_reason: ${reason}`;
 
       currentEvaluation.evaluators.forEach((evaluator: any, index: number) => {
         const metricId = evaluator.metric._id.toString();
-        const summaryConfig = currentEvaluation.summaryConfigs[index];
+        const summaryConfig = currentEvaluation.summaryData.summaryConfigs[index];
 
         if (!summaryConfig?.summary || summaryConfig.summary.trim() === '') {
           metricsNeedingSummary.push(metricId);

@@ -27,20 +27,20 @@ export class SummaryStatusHandler {
       }
 
       const updateObj: Record<string, any> = {
-        [`summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
+        [`summary.summaryConfigs.${evaluatorIndex}.summaryStatus`]: status
       };
 
       switch (status) {
         case SummaryStatusEnum.generating:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.completed:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] = '';
+          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] = '';
           break;
 
         case SummaryStatusEnum.failed:
-          updateObj[`summaryConfigs.${evaluatorIndex}.errorReason`] =
+          updateObj[`summary.summaryConfigs.${evaluatorIndex}.errorReason`] =
             errorReason || 'Unknown error';
           break;
       }
@@ -108,7 +108,8 @@ export class SummaryStatusHandler {
       }
 
       return (
-        evaluation.summaryConfigs?.[evaluatorIndex]?.summaryStatus || SummaryStatusEnum.pending
+        evaluation.summaryData?.summaryConfigs?.[evaluatorIndex]?.summaryStatus ||
+        SummaryStatusEnum.pending
       );
     } catch (error) {
       addLog.error('[SummaryStatusHandler] Failed to get status', {

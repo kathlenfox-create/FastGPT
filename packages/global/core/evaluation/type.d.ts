@@ -31,9 +31,15 @@ export interface SummaryConfig {
   metricId: string;
   metricName: string;
   weight: number;
-  summary: string;
+  summary: Summary;
   summaryStatus: SummaryStatusEnum;
   errorReason: string;
+}
+
+// SummaryData type containing calculation method and configs
+export interface SummaryData {
+  calculateType: CalculateMethodEnum; // Calculation method for all metrics
+  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
 }
 
 // Evaluator configuration type
@@ -63,8 +69,7 @@ export type EvaluationSchemaType = {
   evalDatasetCollectionId: string; // Associated evaluation dataset collection
   target: EvalTarget; // Embedded evaluation target
   evaluators: EvaluatorSchema[]; // Array of evaluator configurations
-  calculateType: CalculateMethodEnum; // Calculation method for all metrics
-  summaryConfigs: SummaryConfig[]; // Array of summary configs, one for each metric
+  summaryData: SummaryData; // Summary configuration containing calculateType and summaryConfigs
   usageId: string;
   status: EvaluationStatusEnum; // Computed real-time from job queues
   createTime: Date;
@@ -157,12 +162,14 @@ export interface SummaryConfigDisplay extends SummaryConfig {
   overThresholdItemCount: number; // Real-time calculated over threshold items count
 }
 
-export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryConfigs'> & {
+export type EvaluationDisplayType = Omit<EvaluationWithPerType, 'summaryData'> & {
   evalDatasetCollectionName?: string;
   metricNames: string[];
   private: boolean;
   sourceMember: SourceMemberType;
-  summaryConfigs: SummaryConfigDisplay[]; // Use extended version for display
+  summaryData: Omit<SummaryData, 'summaryConfigs'> & {
+    summaryConfigs: SummaryConfigDisplay[]; // Use extended version for display
+  };
   aggregateScore?: number; // Real-time calculated aggregate score
 };
 

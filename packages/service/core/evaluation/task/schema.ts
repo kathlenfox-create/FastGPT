@@ -129,11 +129,43 @@ export const EvaluationTaskSchema = new Schema({
   },
   target: EvaluationTargetSchema,
   evaluators: [EvaluationEvaluatorSchema],
-  calculateType: {
-    type: String,
-    enum: CaculateMethodValues,
-    required: true,
-    default: CalculateMethodEnum.mean
+  summaryData: {
+    calculateType: {
+      type: String,
+      enum: CaculateMethodValues,
+      required: true,
+      default: CalculateMethodEnum.mean
+    },
+    summaryConfigs: [
+      {
+        metricId: {
+          type: String,
+          required: true
+        },
+        metricName: {
+          type: String,
+          required: true
+        },
+        weight: {
+          type: Number,
+          required: true
+        },
+        summaryData: {
+          type: String,
+          default: ''
+        },
+        summaryStatus: {
+          type: String,
+          enum: SummaryStatusValues,
+          default: SummaryStatusEnum.pending
+        },
+        errorReason: {
+          type: String,
+          default: ''
+        },
+        _id: false
+      }
+    ]
   },
   usageId: {
     type: Schema.Types.ObjectId,
@@ -146,38 +178,7 @@ export const EvaluationTaskSchema = new Schema({
     default: () => new Date()
   },
   finishTime: Date,
-  errorMessage: String,
-  // Summary configuration for each evaluator
-  summaryConfigs: [
-    {
-      metricId: {
-        type: String,
-        required: true
-      },
-      metricName: {
-        type: String,
-        required: true
-      },
-      weight: {
-        type: Number,
-        required: true
-      },
-      summary: {
-        type: String,
-        default: ''
-      },
-      summaryStatus: {
-        type: String,
-        enum: SummaryStatusValues,
-        default: SummaryStatusEnum.pending
-      },
-      errorReason: {
-        type: String,
-        default: ''
-      },
-      _id: false
-    }
-  ]
+  errorMessage: String
 });
 
 /**

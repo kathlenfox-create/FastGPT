@@ -10,12 +10,13 @@ export function initEvaluationSummaryWorker() {
   const worker = getWorker<EvaluationSummaryJobData>(
     QueueNames.evaluationSummary,
     async (job) => {
-      const { evalId, metricId } = job.data;
+      const { evalId, metricId, languageType } = job.data;
 
       addLog.info('[EvaluationSummary] Worker processing single metric task', {
         jobId: job.id,
         evalId,
-        metricId
+        metricId,
+        languageType
       });
 
       try {
@@ -36,7 +37,8 @@ export function initEvaluationSummaryWorker() {
           evaluation,
           metricId,
           evaluatorIndex,
-          evaluation.evaluators[evaluatorIndex]
+          evaluation.evaluators[evaluatorIndex],
+          languageType
         );
 
         addLog.info('[EvaluationSummary] Worker task completed successfully', {
@@ -67,8 +69,7 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task started', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
       await SummaryStatusHandler.updateStatus(
@@ -88,8 +89,7 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task completed', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
       await SummaryStatusHandler.updateStatus(
@@ -113,8 +113,7 @@ export function initEvaluationSummaryWorker() {
         addLog.warn('[EvaluationSummary] Task job stalled, will be retried', {
           jobId,
           evalId,
-          metricId,
-          timestamp: new Date().toISOString()
+          metricId
         });
 
         await SummaryStatusHandler.updateStatus(
@@ -128,8 +127,7 @@ export function initEvaluationSummaryWorker() {
         addLog.warn(
           '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
           {
-            jobId,
-            timestamp: new Date().toISOString()
+            jobId
           }
         );
       }
@@ -138,8 +136,7 @@ export function initEvaluationSummaryWorker() {
         '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
         {
           jobId,
-          error,
-          timestamp: new Date().toISOString()
+          error
         }
       );
     }
@@ -153,8 +150,7 @@ export function initEvaluationSummaryWorker() {
         jobId: job.id,
         evalId,
         metricId,
-        error: error.message,
-        timestamp: new Date().toISOString()
+        error: error.message
       });
 
       await SummaryStatusHandler.updateStatus(
