@@ -33,7 +33,7 @@ import {
   goodExampleEn,
   badExampleEn
 } from '@fastgpt/global/core/ai/prompt/eval';
-import { LanguageType } from './util/languageUtil';
+import { LanguageType, LanguageDisplayNameMap } from './util/languageUtil';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -799,6 +799,7 @@ export class EvaluationSummaryService {
       }
 
       const baseTemplate = selectedTemplate
+        .replace('{language}', LanguageDisplayNameMap[language])
         .replace('{example}', selectedExample)
         .replace('{evaluation_result_for_single_metric}', '');
 
@@ -970,6 +971,7 @@ export class EvaluationSummaryService {
     const evaluationResult = data.map((item) => this.formatDataItemForPrompt(item)).join('\n\n');
 
     return selectedTemplate
+      .replace('{language}', LanguageDisplayNameMap[language])
       .replace('{example}', selectedExample)
       .replace('{evaluation_result_for_single_metric}', evaluationResult);
   }
@@ -1045,7 +1047,7 @@ eval_reason: ${reason}`;
         return;
       }
 
-      const currentEvaluation = await MongoEvaluation.findById(evalId, 'evaluators summary').lean();
+      const currentEvaluation = await MongoEvaluation.findById(evalId).lean();
 
       if (!currentEvaluation?.evaluators || currentEvaluation.evaluators.length === 0) {
         return;

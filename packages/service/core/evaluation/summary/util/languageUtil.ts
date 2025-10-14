@@ -10,6 +10,13 @@ export enum LanguageType {
   TraditionalChinese = 'zh-TW'
 }
 
+// Language type to display name mapping
+export const LanguageDisplayNameMap: Record<LanguageType, string> = {
+  [LanguageType.English]: 'English',
+  [LanguageType.SimplifiedChinese]: '简体中文',
+  [LanguageType.TraditionalChinese]: '繁體中文'
+};
+
 interface LanguageDetectionResult {
   language: LanguageType;
   englishRatio: number;
