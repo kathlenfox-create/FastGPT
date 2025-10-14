@@ -2,7 +2,7 @@ import { MongoEvalItem } from '../../task/schema';
 import { Types } from '../../../../common/mongo';
 import { addLog } from '../../../../common/system/log';
 import { franc } from 'franc';
-import { zh2Hant } from 'chinese-conv';
+import { tify } from 'chinese-conv';
 
 export enum LanguageType {
   English = 'en',
@@ -39,7 +39,7 @@ export function detectLanguages(
     }
 
     if (lang === 'cmn' || /[\u4e00-\u9fff]/.test(text)) {
-      const hant = zh2Hant(text);
+      const hant = tify(text);
       results.push(text === hant ? 'zh-tw' : 'zh-cn');
       continue;
     }

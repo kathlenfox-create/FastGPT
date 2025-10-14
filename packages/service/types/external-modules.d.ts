@@ -29,30 +29,23 @@ declare module 'franc' {
  */
 declare module 'chinese-conv' {
   /**
-   * Convert simplified Chinese to tra·ditional Chinese (Hant)
+   * Convert simplified Chinese to traditional Chinese
    * @param text - Simplified Chinese text to convert
    * @returns Traditional Chinese text
    */
-  export function zh2Hant(text: string): string;
+  export function tify(text: string): string;
 
   /**
-   * Convert traditional Chinese to simplified Chinese (Hans)
+   * Convert traditional Chinese to simplified Chinese
    * @param text - Traditional Chinese text to convert
    * @returns Simplified Chinese text
    */
-  export function zh2Hans(text: string): string;
+  export function sify(text: string): string;
 
   /**
-   * Check if the text is simplified Chinese
-   * @param text - Text to check
-   * @returns True if text is simplified Chinese
+   * Convert JSON object with simplified Chinese to traditional Chinese
+   * @param obj - JSON object to convert
+   * @returns Converted JSON object
    */
-  export function isSimplifiedChinese(text: string): boolean;
-
-  /**
-   * Check if the text is traditional Chinese
-   * @param text - Text to check
-   * @returns True if text is traditional Chinese
-   */
-  export function isTraditionalChinese(text: string): boolean;
+  export function tifyJson<T>(obj: T): T;
 }
