@@ -66,7 +66,7 @@ export const CaculateMethodMap = {
 
 export const CaculateMethodValues = Object.values(CalculateMethodEnum);
 
-export const TARGET_RUN_ERROR_PREFIX = 'target run error';
+export const TARGET_RUN_ERROR_PREFIX = '被评测对象运行过程报错';
 
 // Score constants
 export const PERFECT_SCORE = 1;

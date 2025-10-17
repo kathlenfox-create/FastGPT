@@ -142,7 +142,10 @@ export interface TargetOutput {
   responseTime: number;
   chatId: string;
   aiChatItemDataId: string;
-  errorMessage?: string;
+  errorMessage?: {
+    nodeName?: string;
+    errorContext?: string;
+  };
 }
 
 export type EvaluationWithPerType = EvaluationSchemaType & {

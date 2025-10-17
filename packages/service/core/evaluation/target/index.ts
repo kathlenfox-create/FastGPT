@@ -161,14 +161,23 @@ export class WorkflowTarget extends EvaluationTarget {
       });
 
     // check workflow whether have any error happen
-    let errorMessage: string | undefined = undefined;
+    let errorMessage: TargetOutput['errorMessage'];
     flowResponses.some((moduleRes) => {
       if (moduleRes.errorText) {
-        errorMessage = moduleRes.errorText;
+        errorMessage = {
+          nodeName: moduleRes.moduleName || undefined,
+          errorContext: moduleRes.errorText
+        };
         return true;
       }
       if (moduleRes.error) {
-        errorMessage = getErrText(moduleRes.error, EvaluationErrEnum.evalTargetExecutionError);
+        const errorContext =
+          getErrText(moduleRes.error, EvaluationErrEnum.evalTargetExecutionError) ||
+          EvaluationErrEnum.evalTargetExecutionError;
+        errorMessage = {
+          nodeName: moduleRes.moduleName || undefined,
+          errorContext
+        };
         return true;
       }
     });

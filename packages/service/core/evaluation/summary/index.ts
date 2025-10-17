@@ -219,7 +219,6 @@ export class EvaluationSummaryService {
             const mid1 = sortedScores[length / 2 - 1];
             const mid2 = sortedScores[length / 2];
             medianScore = (mid1 + mid2) / 2;
-            console.log('[calculateMetricScores] Median score:', medianScore);
           } else {
             medianScore = sortedScores[Math.floor(length / 2)];
           }

@@ -243,7 +243,10 @@ const evaluationItemProcessor = async (job: Job<EvaluationItemJobData>) => {
 
       if (!targetOutput.actualOutput) {
         if (targetOutput.errorMessage) {
-          throw new Error(`${TARGET_RUN_ERROR_PREFIX}: ${targetOutput.errorMessage}`);
+          const { nodeName, errorContext } = targetOutput.errorMessage;
+          const reason = errorContext || EvaluationErrEnum.evalTargetExecutionError;
+          const message = `${TARGET_RUN_ERROR_PREFIX}，${nodeName}，${reason}`;
+          throw new Error(message);
         }
         throw new Error(EvaluationErrEnum.evalTargetExecutionError);
       }
