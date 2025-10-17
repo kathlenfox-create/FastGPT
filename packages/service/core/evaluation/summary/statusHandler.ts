@@ -2,23 +2,25 @@ import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
 import { addLog } from '../../../common/system/log';
 
+type UpdateSummaryStatusParams = {
+  evalId: string;
+  metricId: string;
+  status: SummaryStatusEnum;
+  errorReason?: string;
+};
+
 // 状态更新处理器
 export class SummaryStatusHandler {
   /**
    * 更新评估总结状态
-   * @param evalId 评估任务ID
-   * @param metricId 指标ID
-   * @param status 新状态
-   * @param errorReason 错误原因（可选）
-   * @param timestamp 时间戳（可选）
+   * @param params 更新参数
    */
-  static async updateStatus(
-    evalId: string,
-    metricId: string,
-    status: SummaryStatusEnum,
-    errorReason?: string,
-    timestamp?: Date
-  ): Promise<boolean> {
+  static async updateStatus({
+    evalId,
+    metricId,
+    status,
+    errorReason
+  }: UpdateSummaryStatusParams): Promise<boolean> {
     try {
       const evaluation = await MongoEvaluation.findById(evalId).lean();
       if (!evaluation) {
@@ -63,8 +65,7 @@ export class SummaryStatusHandler {
         metricId,
         status,
         errorReason,
-        evaluatorIndex,
-        timestamp: timestamp || new Date()
+        evaluatorIndex
       });
 
       return true;
@@ -90,18 +91,16 @@ export class SummaryStatusHandler {
       metricId: string;
       status: SummaryStatusEnum;
       errorReason?: string;
-      timestamp?: Date;
     }>
   ): Promise<boolean[]> {
     const results = await Promise.allSettled(
       updates.map((update) =>
-        this.updateStatus(
+        this.updateStatus({
           evalId,
-          update.metricId,
-          update.status,
-          update.errorReason,
-          update.timestamp
-        )
+          metricId: update.metricId,
+          status: update.status,
+          errorReason: update.errorReason
+        })
       )
     );
 

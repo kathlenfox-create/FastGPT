@@ -72,13 +72,11 @@ export async function addSummaryTaskToQueue(evalId: string, metricIds: string[])
       }
 
       // 设置 pending 状态
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.pending,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.pending
+      });
 
       addLog.info('[EvaluationSummary] Adding new task to queue', {
         evalId,

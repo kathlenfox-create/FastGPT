@@ -2,6 +2,7 @@ import { getWorker, QueueNames } from '../../../common/bullmq';
 import { addLog } from '../../../common/system/log';
 import { MongoEvaluation } from '../task/schema';
 import { SummaryStatusEnum } from '@fastgpt/global/core/evaluation/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { EvaluationSchemaType } from '@fastgpt/global/core/evaluation/type';
 import { type EvaluationSummaryJobData, getEvaluationSummaryQueue } from './queue';
 import { EvaluationSummaryService } from './index';
@@ -109,18 +110,15 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task started', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
       // 更新状态为generating
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.generating,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.generating
+      });
     }
   });
 
@@ -132,18 +130,15 @@ export function initEvaluationSummaryWorker() {
       addLog.info('[EvaluationSummary] Task completed', {
         jobId: job.id,
         evalId,
-        metricId,
-        timestamp: new Date().toISOString()
+        metricId
       });
 
       // 更新状态为completed
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.completed,
-        undefined,
-        new Date()
-      );
+        status: SummaryStatusEnum.completed
+      });
     }
   });
 
@@ -159,24 +154,20 @@ export function initEvaluationSummaryWorker() {
         addLog.warn('[EvaluationSummary] Task job stalled, will be retried', {
           jobId,
           evalId,
-          metricId,
-          timestamp: new Date().toISOString()
+          metricId
         });
 
         // 将状态重置为pending，等待重试
-        await SummaryStatusHandler.updateStatus(
+        await SummaryStatusHandler.updateStatus({
           evalId,
           metricId,
-          SummaryStatusEnum.pending,
-          undefined,
-          new Date()
-        );
+          status: SummaryStatusEnum.pending
+        });
       } else {
         addLog.warn(
           '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
           {
-            jobId,
-            timestamp: new Date().toISOString()
+            jobId
           }
         );
       }
@@ -185,8 +176,7 @@ export function initEvaluationSummaryWorker() {
         '[EvaluationSummary] Task job stalled, will be retried (could not get job data)',
         {
           jobId,
-          error,
-          timestamp: new Date().toISOString()
+          error
         }
       );
     }
@@ -201,18 +191,16 @@ export function initEvaluationSummaryWorker() {
         jobId: job.id,
         evalId,
         metricId,
-        error: error.message,
-        timestamp: new Date().toISOString()
+        error: error.message
       });
 
       // 更新状态为failed
-      await SummaryStatusHandler.updateStatus(
+      await SummaryStatusHandler.updateStatus({
         evalId,
         metricId,
-        SummaryStatusEnum.failed,
-        error.message,
-        new Date()
-      );
+        status: SummaryStatusEnum.failed,
+        errorReason: getErrText(error)
+      });
     }
   });
 
